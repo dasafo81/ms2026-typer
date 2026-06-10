@@ -1,14 +1,12 @@
-const API_KEY = import.meta.env.VITE_API_FOOTBALL_KEY
-const BASE_URL = 'https://v3.football.api-sports.io'
-
-// MŚ 2026 — league_id: 1 (FIFA World Cup), season: 2026
-const WC_LEAGUE_ID = 1
-const WC_SEASON = 2026
+// football-data.org API
+// MŚ 2026 — competition code: WC
+const API_KEY = import.meta.env.VITE_FOOTBALL_DATA_KEY
+const BASE_URL = 'https://api.football-data.org/v4'
 
 async function apiRequest(endpoint) {
   const res = await fetch(`${BASE_URL}${endpoint}`, {
     headers: {
-      'x-apisports-key': API_KEY
+      'X-Auth-Token': API_KEY
     }
   })
   if (!res.ok) throw new Error(`API error: ${res.status}`)
@@ -16,52 +14,47 @@ async function apiRequest(endpoint) {
 }
 
 export async function fetchFixtures() {
-  const data = await apiRequest(`/fixtures?league=${WC_LEAGUE_ID}&season=${WC_SEASON}`)
-  return data.response || []
+  const data = await apiRequest('/competitions/WC/matches')
+  return data.matches || []
 }
 
 export async function fetchLiveFixtures() {
-  const data = await apiRequest(`/fixtures?league=${WC_LEAGUE_ID}&season=${WC_SEASON}&live=all`)
-  return data.response || []
+  const data = await apiRequest('/competitions/WC/matches?status=LIVE,IN_PLAY,PAUSED')
+  return data.matches || []
 }
 
-export async function fetchFixtureById(fixtureId) {
-  const data = await apiRequest(`/fixtures?id=${fixtureId}`)
-  return data.response?.[0] || null
-}
-
-export function mapFixtureToMatch(fixture) {
-  const f = fixture.fixture
-  const teams = fixture.teams
-  const goals = fixture.goals
-  const league = fixture.league
+export function mapFixtureToMatch(match) {
+  const round = match.stage || ''
+  const groupName = match.group || match.stage || ''
 
   let stage = 'group'
-  const round = league.round?.toLowerCase() || ''
-  if (round.includes('round of 16')) stage = 'r16'
-  else if (round.includes('quarter')) stage = 'qf'
-  else if (round.includes('semi')) stage = 'sf'
-  else if (round.includes('final') && !round.includes('semi')) stage = 'final'
+  if (round === 'ROUND_OF_16') stage = 'r16'
+  else if (round === 'QUARTER_FINALS') stage = 'qf'
+  else if (round === 'SEMI_FINALS') stage = 'sf'
+  else if (round === 'FINAL') stage = 'final'
 
   let status = 'scheduled'
-  if (f.status.short === 'FT' || f.status.short === 'AET' || f.status.short === 'PEN') {
-    status = 'finished'
-  } else if (['1H', '2H', 'HT', 'ET', 'P'].includes(f.status.short)) {
-    status = 'live'
-  }
+  if (match.status === 'FINISHED') status = 'finished'
+  else if (['IN_PLAY', 'PAUSED', 'LIVE'].includes(match.status)) status = 'live'
+
+  const homeScore = match.score?.fullTime?.home ?? null
+  const awayScore = match.score?.fullTime?.away ?? null
+
+  // Mapowanie fazy grupowej na czytelną nazwę
+  const groupLabel = groupName.replace('GROUP_', 'Grupa ')
 
   return {
-    api_match_id: f.id,
-    home_team: teams.home.name,
-    away_team: teams.away.name,
+    api_match_id: match.id,
+    home_team: match.homeTeam?.name || 'TBD',
+    away_team: match.awayTeam?.name || 'TBD',
     home_flag: null,
     away_flag: null,
-    home_score: goals.home,
-    away_score: goals.away,
-    kickoff_at: f.date,
+    home_score: homeScore,
+    away_score: awayScore,
+    kickoff_at: match.utcDate,
     stage,
-    group_name: league.round,
+    group_name: groupLabel,
     status,
-    venue: f.venue?.name ? `${f.venue.name}, ${f.venue.city}` : null
+    venue: match.venue || null
   }
 }
