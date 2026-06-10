@@ -16,31 +16,19 @@ export default function Layout() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
       <header style={{
-        background: 'var(--bg2)',
-        borderBottom: '1px solid var(--border)',
+        background: '#0d0d0d',
+        borderBottom: '2px solid #b8952a',
         position: 'sticky', top: 0, zIndex: 100
       }}>
         <div style={{
           maxWidth: 960, margin: '0 auto', padding: '0 16px',
-          display: 'flex', alignItems: 'center', gap: 16, height: 60
+          display: 'flex', alignItems: 'center', gap: 16, height: 64
         }}>
-          {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginRight: 8 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: 'linear-gradient(135deg, var(--green) 0%, #00695c 100%)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18
-            }}>⚽</div>
-            <div>
-              <div style={{ fontFamily: 'Space Grotesk', fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>Typer</div>
-              <div style={{ fontSize: 10, color: 'var(--text2)', letterSpacing: 1 }}>MŚ 2026</div>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginRight: 12 }}>
+            <img src="/logo.svg" alt="Karingtony 2026" style={{ height: 44, width: 'auto' }} />
           </div>
 
-          {/* Nav */}
           <nav style={{ display: 'flex', gap: 4, flex: 1 }}>
             {[
               { to: '/', label: '🏆 Ranking' },
@@ -52,12 +40,13 @@ export default function Layout() {
                 to={to}
                 end={to === '/'}
                 style={({ isActive }) => ({
-                  padding: '6px 12px',
+                  padding: '6px 14px',
                   borderRadius: 8,
                   fontSize: 13,
                   fontWeight: 500,
-                  color: isActive ? 'var(--green)' : 'var(--text2)',
-                  background: isActive ? 'var(--green-dim)' : 'transparent',
+                  color: isActive ? '#f5d87a' : '#9a8a6a',
+                  background: isActive ? '#b8952a22' : 'transparent',
+                  border: isActive ? '1px solid #b8952a44' : '1px solid transparent',
                   transition: 'all 0.15s',
                   whiteSpace: 'nowrap'
                 })}
@@ -67,33 +56,32 @@ export default function Layout() {
             ))}
           </nav>
 
-          {/* User */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {player.is_admin && (
               <NavLink to="/admin" style={({ isActive }) => ({
                 padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                color: isActive ? 'var(--gold)' : 'var(--text3)',
-                background: isActive ? 'var(--gold-dim)' : 'transparent',
+                color: isActive ? '#f5d87a' : '#b8952a',
+                background: isActive ? '#b8952a22' : 'transparent',
               })}>
                 ⚙️ Admin
               </NavLink>
             )}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{
-                width: 32, height: 32, borderRadius: '50%',
+                width: 34, height: 34, borderRadius: '50%',
                 background: player.avatar_color,
+                border: '2px solid #b8952a',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 12, fontWeight: 700, color: '#fff'
               }}>{initials}</div>
-              <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text2)' }}
-                className="hide-mobile">{player.name}</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#c9a84c' }}>{player.name}</span>
             </div>
             <button
               onClick={logout}
               style={{
-                background: 'transparent', border: '1px solid var(--border2)',
+                background: 'transparent', border: '1px solid #b8952a44',
                 borderRadius: 6, padding: '5px 10px', fontSize: 12,
-                color: 'var(--text2)', cursor: 'pointer'
+                color: '#9a8a6a', cursor: 'pointer'
               }}
             >
               Wyloguj
@@ -102,20 +90,21 @@ export default function Layout() {
         </div>
       </header>
 
-      {/* Main */}
-      <main style={{ flex: 1, maxWidth: 960, margin: '0 auto', padding: '24px 16px', width: '100%' }}>
+      <main style={{ flex: 1, maxWidth: 960, margin: '0 auto', padding: '28px 16px', width: '100%' }}>
         <Outlet />
       </main>
 
-      {/* Footer */}
       <footer style={{
-        borderTop: '1px solid var(--border)',
-        padding: '12px 16px',
+        background: '#0d0d0d',
+        borderTop: '1px solid #b8952a44',
+        padding: '14px 16px',
         textAlign: 'center',
         fontSize: 12,
-        color: 'var(--text3)'
+        color: '#5a4a2a',
+        letterSpacing: 1,
+        fontFamily: 'Georgia, serif'
       }}>
-        Typer MŚ 2026 · Osiedlowa Liga · {new Date().getFullYear()}
+        KARINGTONY WORLD CUP LEAGUE · 2026
       </footer>
     </div>
   )

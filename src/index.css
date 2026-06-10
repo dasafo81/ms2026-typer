@@ -1,27 +1,27 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --green: #00c853;
-  --green-dark: #009624;
-  --green-dim: #00c85322;
-  --gold: #ffd600;
-  --gold-dim: #ffd60022;
-  --red: #e53935;
-  --red-dim: #e5393522;
-  --blue: #1565c0;
-  --blue-dim: #1565c022;
-  --bg: #0a0e1a;
-  --bg2: #111827;
-  --bg3: #1a2234;
-  --bg4: #1f2a3f;
-  --border: #ffffff18;
-  --border2: #ffffff28;
-  --text: #f0f4ff;
-  --text2: #8b9cbf;
-  --text3: #4a5a7a;
+  --gold: #b8952a;
+  --gold2: #c9a84c;
+  --gold3: #f5d87a;
+  --gold-dim: #b8952a18;
+  --red: #c0392b;
+  --red-dim: #c0392b15;
+  --green: #1a7a4a;
+  --green-dim: #1a7a4a15;
+  --blue-dim: #1565c015;
+  --bg: #f7f4ef;
+  --bg2: #ffffff;
+  --bg3: #f0ece3;
+  --bg4: #e8e2d6;
+  --border: #d4c9b020;
+  --border2: #b8952a40;
+  --text: #1a1208;
+  --text2: #5a4a2a;
+  --text3: #9a8a6a;
   --radius: 12px;
   --radius-sm: 8px;
-  --shadow: 0 4px 24px #00000060;
+  --shadow: 0 2px 16px #b8952a18;
 }
 
 html { font-size: 16px; }
@@ -38,22 +38,12 @@ h1, h2, h3, .font-display {
   font-family: 'Space Grotesk', sans-serif;
 }
 
-button {
-  cursor: pointer;
-  font-family: inherit;
-  border: none;
-  outline: none;
-}
-
-input {
-  font-family: inherit;
-  outline: none;
-}
-
+button { cursor: pointer; font-family: inherit; border: none; outline: none; }
+input { font-family: inherit; outline: none; }
 a { text-decoration: none; color: inherit; }
 
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-track { background: var(--bg3); }
 ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
 
 .btn {
@@ -67,10 +57,10 @@ a { text-decoration: none; color: inherit; }
   transition: all 0.15s;
 }
 .btn-primary {
-  background: var(--green);
-  color: #000;
+  background: var(--gold);
+  color: #fff;
 }
-.btn-primary:hover { background: var(--green-dark); color: #fff; }
+.btn-primary:hover { background: #9a7a22; }
 .btn-ghost {
   background: transparent;
   color: var(--text2);
@@ -80,9 +70,10 @@ a { text-decoration: none; color: inherit; }
 
 .card {
   background: var(--bg2);
-  border: 1px solid var(--border);
+  border: 1px solid #e8e0d0;
   border-radius: var(--radius);
   padding: 20px;
+  box-shadow: 0 1px 8px #b8952a0a;
 }
 
 .badge {
@@ -97,7 +88,7 @@ a { text-decoration: none; color: inherit; }
 .badge-green { background: var(--green-dim); color: var(--green); }
 .badge-gold { background: var(--gold-dim); color: var(--gold); }
 .badge-red { background: var(--red-dim); color: var(--red); }
-.badge-blue { background: var(--blue-dim); color: #60a5fa; }
+.badge-blue { background: var(--blue-dim); color: #1565c0; }
 .badge-gray { background: var(--bg4); color: var(--text2); }
 
 .tag-live {
@@ -121,34 +112,28 @@ a { text-decoration: none; color: inherit; }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  50% { opacity: 0.5; }
 }
 
-.divider {
-  border: none;
-  border-top: 1px solid var(--border);
-  margin: 16px 0;
-}
+.divider { border: none; border-top: 1px solid #e8e0d0; margin: 16px 0; }
 
 .input-field {
   width: 100%;
   background: var(--bg3);
-  border: 1px solid var(--border2);
+  border: 1px solid #ddd5c0;
   border-radius: var(--radius-sm);
   padding: 10px 14px;
   color: var(--text);
   font-size: 15px;
   transition: border-color 0.15s;
 }
-.input-field:focus {
-  border-color: var(--green);
-}
+.input-field:focus { border-color: var(--gold); }
 .input-field::placeholder { color: var(--text3); }
 
 .score-input {
   width: 52px;
   background: var(--bg3);
-  border: 1px solid var(--border2);
+  border: 1px solid #ddd5c0;
   border-radius: var(--radius-sm);
   padding: 8px;
   color: var(--text);
@@ -158,7 +143,7 @@ a { text-decoration: none; color: inherit; }
   font-family: 'Space Grotesk', sans-serif;
   transition: border-color 0.15s;
 }
-.score-input:focus { border-color: var(--green); }
+.score-input:focus { border-color: var(--gold); }
 .score-input::-webkit-inner-spin-button,
 .score-input::-webkit-outer-spin-button { -webkit-appearance: none; }
 

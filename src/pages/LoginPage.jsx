@@ -28,40 +28,46 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'var(--bg)',
+      background: '#0d0d0d',
       display: 'flex',
+      flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
       padding: 16
     }}>
-      <div style={{ width: '100%', maxWidth: 400 }}>
-        {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <div style={{
-            width: 72, height: 72, borderRadius: 20,
-            background: 'var(--bg2)',
-            border: '1px solid var(--border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 36, margin: '0 auto 16px'
-          }}>⚽</div>
-          <h1 style={{ fontFamily: 'Space Grotesk', fontSize: 28, fontWeight: 700, marginBottom: 6 }}>
-            Typer MŚ 2026
-          </h1>
-          <p style={{ color: 'var(--text2)', fontSize: 14 }}>
-            Osiedlowa liga typowania wyników
-          </p>
+      <div style={{ width: '100%', maxWidth: 420 }}>
+        <div style={{ textAlign: 'center', marginBottom: 36 }}>
+          <img src="/logo.svg" alt="Karingtony 2026" style={{ width: '100%', maxWidth: 380, height: 'auto' }} />
         </div>
 
-        {/* Form */}
-        <div className="card" style={{ padding: 28 }}>
-          <h2 style={{ fontFamily: 'Space Grotesk', fontSize: 18, fontWeight: 600, marginBottom: 20 }}>
-            Dołącz do zabawy
-          </h2>
+        <div style={{
+          background: '#fff',
+          borderRadius: 12,
+          border: '1px solid #e8e0d0',
+          padding: 32,
+          boxShadow: '0 4px 32px #b8952a20'
+        }}>
+          <div style={{
+            textAlign: 'center',
+            marginBottom: 24,
+            paddingBottom: 20,
+            borderBottom: '1px solid #e8e0d0'
+          }}>
+            <div style={{
+              fontSize: 11, letterSpacing: 3, color: '#b8952a',
+              fontFamily: 'Georgia, serif', textTransform: 'uppercase', marginBottom: 6
+            }}>
+              Dołącz do ligi
+            </div>
+            <div style={{ fontSize: 13, color: '#9a8a6a' }}>
+              Wpisz swoje dane aby zacząć typować
+            </div>
+          </div>
 
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 13, color: 'var(--text2)', display: 'block', marginBottom: 6 }}>
-                Twoje imię / ksywka
+              <label style={{ fontSize: 12, color: '#9a8a6a', display: 'block', marginBottom: 6, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                Imię / ksywka
               </label>
               <input
                 className="input-field"
@@ -73,14 +79,14 @@ export default function LoginPage() {
               />
             </div>
 
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ fontSize: 13, color: 'var(--text2)', display: 'block', marginBottom: 6 }}>
-                Email (służy jako identyfikator)
+            <div style={{ marginBottom: 22 }}>
+              <label style={{ fontSize: 12, color: '#9a8a6a', display: 'block', marginBottom: 6, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+                Email
               </label>
               <input
                 className="input-field"
                 type="email"
-                placeholder="damian@example.com"
+                placeholder="twoj@email.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
@@ -89,9 +95,9 @@ export default function LoginPage() {
 
             {error && (
               <div style={{
-                background: 'var(--red-dim)', border: '1px solid var(--red)',
+                background: '#c0392b10', border: '1px solid #c0392b40',
                 borderRadius: 8, padding: '10px 14px',
-                fontSize: 13, color: 'var(--red)', marginBottom: 16
+                fontSize: 13, color: '#c0392b', marginBottom: 16
               }}>
                 {error}
               </div>
@@ -99,42 +105,46 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="btn btn-primary"
-              style={{ width: '100%', justifyContent: 'center', padding: 12, fontSize: 15 }}
+              style={{
+                width: '100%', padding: '13px',
+                background: '#b8952a', color: '#fff',
+                border: 'none', borderRadius: 8,
+                fontSize: 14, fontWeight: 700,
+                letterSpacing: 1, cursor: 'pointer',
+                fontFamily: 'Georgia, serif',
+                textTransform: 'uppercase',
+                transition: 'background 0.15s',
+                opacity: loading ? 0.7 : 1
+              }}
               disabled={loading}
             >
-              {loading ? 'Łączę...' : 'Wchodzę w to →'}
+              {loading ? 'Łączę...' : 'Wchodzę w to'}
             </button>
           </form>
 
-          <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 16, textAlign: 'center' }}>
-            Podaj ten sam email żeby wrócić do swojego konta
+          <p style={{ fontSize: 11, color: '#b8a88a', marginTop: 14, textAlign: 'center' }}>
+            Ten sam email = powrót do swojego konta
           </p>
         </div>
 
-        {/* Rules */}
         <div style={{
-          marginTop: 20, padding: '14px 18px',
-          background: 'var(--bg2)', borderRadius: 10,
-          border: '1px solid var(--border)'
+          marginTop: 20,
+          display: 'flex', justifyContent: 'center', gap: 32
         }}>
-          <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 8, fontWeight: 600 }}>
-            Zasady punktacji
-          </div>
-          <div style={{ display: 'flex', gap: 16 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--green)', fontFamily: 'Space Grotesk' }}>3</div>
-              <div style={{ fontSize: 11, color: 'var(--text3)' }}>dokładny wynik</div>
+          {[
+            { pts: '3', label: 'Dokładny wynik' },
+            { pts: '1', label: 'Trafiony wynik' },
+            { pts: '0', label: 'Pudło' },
+          ].map(s => (
+            <div key={s.label} style={{ textAlign: 'center' }}>
+              <div style={{
+                fontSize: 26, fontWeight: 800,
+                color: s.pts === '3' ? '#f5d87a' : s.pts === '1' ? '#c9a84c' : '#5a4a2a',
+                fontFamily: 'Georgia, serif'
+              }}>{s.pts}</div>
+              <div style={{ fontSize: 11, color: '#5a4a2a', letterSpacing: 0.5 }}>{s.label}</div>
             </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--gold)', fontFamily: 'Space Grotesk' }}>1</div>
-              <div style={{ fontSize: 11, color: 'var(--text3)' }}>trafiony wynik (1X2)</div>
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--text3)', fontFamily: 'Space Grotesk' }}>0</div>
-              <div style={{ fontSize: 11, color: 'var(--text3)' }}>pudło</div>
-            </div>
-          </div>
+          ))}
         </div>
       </div>
     </div>
