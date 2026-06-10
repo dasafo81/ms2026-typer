@@ -33,8 +33,10 @@ export default function MatchesPage() {
     setLoading(false)
   }
 
+  const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000)
   const filtered = matches.filter(m => {
     if (filter === 'open') return m.status === 'scheduled' && new Date(m.kickoff_at) > now
+    if (filter === 'soon') return m.status === 'scheduled' && new Date(m.kickoff_at) > now && new Date(m.kickoff_at) <= in48h
     if (filter === 'finished') return m.status === 'finished'
     return true
   })
@@ -55,7 +57,7 @@ export default function MatchesPage() {
           <p style={{ color: 'var(--text2)', fontSize: 14 }}>Typuj wyniki przed godziną kick-off</p>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
-          {[['all', 'Wszystkie'], ['open', 'Do typowania'], ['finished', 'Rozegrane']].map(([v, l]) => (
+          {[['all', 'Wszystkie'], ['soon', '⏰ Najbliższe 48h'], ['open', 'Do typowania'], ['finished', 'Rozegrane']].map(([v, l]) => (
             <button
               key={v}
               onClick={() => setFilter(v)}
