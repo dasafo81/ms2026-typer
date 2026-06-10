@@ -8,11 +8,14 @@ export default function MatchesPage() {
   const [matches, setMatches] = useState([])
   const [predictions, setPredictions] = useState({}) // match_id -> prediction
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('all') // all | open | finished
+  const [filter, setFilter] = useState('all')
+  const [now, setNow] = useState(new Date())
   const { player } = usePlayer()
 
   useEffect(() => {
     loadAll()
+    const tick = setInterval(() => setNow(new Date()), 60000)
+    return () => clearInterval(tick)
   }, [player])
 
   async function loadAll() {
@@ -30,7 +33,6 @@ export default function MatchesPage() {
     setLoading(false)
   }
 
-  const now = new Date()
   const filtered = matches.filter(m => {
     if (filter === 'open') return m.status === 'scheduled' && new Date(m.kickoff_at) > now
     if (filter === 'finished') return m.status === 'finished'
