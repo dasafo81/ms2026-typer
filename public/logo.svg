@@ -1,1 +1,26 @@
-
+<svg width="100%" viewBox="0 0 680 200" role="img" xmlns="http://www.w3.org/2000/svg">
+<rect x="0" y="0" width="680" height="200" rx="4" fill="#0d0d0d"/>
+<rect x="40" y="22" width="600" height="2" fill="#b8952a"/>
+<rect x="40" y="176" width="600" height="2" fill="#b8952a"/>
+<rect x="40" y="24" width="600" height="1" fill="#f5d87a" opacity="0.4"/>
+<rect x="40" y="174" width="600" height="1" fill="#f5d87a" opacity="0.4"/>
+<line x1="40" y1="22" x2="40" y2="178" stroke="#b8952a" stroke-width="2"/>
+<line x1="640" y1="22" x2="640" y2="178" stroke="#b8952a" stroke-width="2"/>
+<polygon points="40,22 56,22 40,38" fill="#f5d87a" opacity="0.6"/>
+<polygon points="640,22 624,22 640,38" fill="#f5d87a" opacity="0.6"/>
+<polygon points="40,178 56,178 40,162" fill="#f5d87a" opacity="0.6"/>
+<polygon points="640,178 624,178 640,162" fill="#f5d87a" opacity="0.6"/>
+<text x="340" y="96" font-family="Georgia, 'Times New Roman', serif" font-size="54" font-weight="700" fill="#c9a84c" text-anchor="middle" letter-spacing="6" dominant-baseline="middle">KARINGTONY</text>
+<text x="340" y="96" font-family="Georgia, 'Times New Roman', serif" font-size="54" font-weight="700" fill="none" stroke="#f5d87a" stroke-width="0.4" text-anchor="middle" letter-spacing="6" dominant-baseline="middle">KARINGTONY</text>
+<line x1="120" y1="118" x2="260" y2="118" stroke="#b8952a" stroke-width="0.5"/>
+<polygon points="260,115 272,118 260,121" fill="#b8952a"/>
+<polygon points="420,115 408,118 420,121" fill="#b8952a"/>
+<line x1="420" y1="118" x2="560" y2="118" stroke="#b8952a" stroke-width="0.5"/>
+<text x="340" y="118" font-family="Georgia, 'Times New Roman', serif" font-size="13" fill="#f5d87a" text-anchor="middle" letter-spacing="8" dominant-baseline="middle">WORLD CUP LEAGUE</text>
+<text x="340" y="150" font-family="Georgia, 'Times New Roman', serif" font-size="22" font-weight="400" fill="#8a6a20" text-anchor="middle" letter-spacing="12" dominant-baseline="middle">2026</text>
+<text x="340" y="150" font-family="Georgia, 'Times New Roman', serif" font-size="22" font-weight="400" fill="none" stroke="#c9a84c" stroke-width="0.3" text-anchor="middle" letter-spacing="12" dominant-baseline="middle">2026</text>
+<circle cx="178" cy="150" r="3" fill="#b8952a" opacity="0.6"/>
+<circle cx="502" cy="150" r="3" fill="#b8952a" opacity="0.6"/>
+<circle cx="340" cy="48" r="4" fill="#b8952a" opacity="0.5"/>
+<circle cx="340" cy="48" r="2" fill="#f5d87a" opacity="0.8"/>
+</svg>
