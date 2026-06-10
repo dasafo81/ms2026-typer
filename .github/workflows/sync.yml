@@ -10,7 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Wywołaj sync endpoint
+        env:
+          VERCEL_APP_URL: ${{ secrets.VERCEL_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          curl -X GET "${{ secrets.VERCEL_APP_URL }}/api/sync-cron" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+          curl -X GET "${VERCEL_APP_URL}/api/sync-cron" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
             -f --silent --show-error
