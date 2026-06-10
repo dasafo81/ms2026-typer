@@ -1,14 +1,7 @@
-// football-data.org API
-// MŚ 2026 — competition code: WC
-const API_KEY = import.meta.env.VITE_FOOTBALL_DATA_KEY
-const BASE_URL = 'https://api.football-data.org/v4'
-
+// football-data.org API — przez Vercel proxy (CORS fix)
 async function apiRequest(endpoint) {
-  const res = await fetch(`${BASE_URL}${endpoint}`, {
-    headers: {
-      'X-Auth-Token': API_KEY
-    }
-  })
+  const url = `/api/football?endpoint=${encodeURIComponent(endpoint)}`
+  const res = await fetch(url)
   if (!res.ok) throw new Error(`API error: ${res.status}`)
   return res.json()
 }
@@ -40,8 +33,9 @@ export function mapFixtureToMatch(match) {
   const homeScore = match.score?.fullTime?.home ?? null
   const awayScore = match.score?.fullTime?.away ?? null
 
-  // Mapowanie fazy grupowej na czytelną nazwę
-  const groupLabel = groupName.replace('GROUP_', 'Grupa ')
+  const groupLabel = groupName.startsWith('GROUP_')
+    ? 'Grupa ' + groupName.replace('GROUP_', '')
+    : groupName
 
   return {
     api_match_id: match.id,
