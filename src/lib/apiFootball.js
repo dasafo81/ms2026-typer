@@ -7,12 +7,25 @@ async function apiRequest(endpoint) {
 }
 
 export async function fetchFixtures() {
-  const data = await apiRequest('/competitions/WC/matches')
-  return data.matches || []
+  // Pobierz wszystkie mecze + osobno zakończone (żeby mieć pewność wyników)
+  const [all, finished] = await Promise.all([
+    apiRequest('/competitions/WC/matches'),
+    apiRequest('/competitions/WC/matches?status=FINISHED')
+  ])
+
+  const allMatches = all.matches || []
+  const finishedMatches = finished.matches || []
+
+  // Scal — zakończone nadpisują scheduled
+  const map = {}
+  for (const m of allMatches) map[m.id] = m
+  for (const m of finishedMatches) map[m.id] = m
+
+  return Object.values(map)
 }
 
 export async function fetchLiveFixtures() {
-  const data = await apiRequest('/competitions/WC/matches?status=LIVE,IN_PLAY,PAUSED')
+  const data = await apiRequest('/competitions/WC/matches?status=IN_PLAY,PAUSED')
   return data.matches || []
 }
 
@@ -28,7 +41,7 @@ export function mapFixtureToMatch(match) {
 
   let status = 'scheduled'
   if (match.status === 'FINISHED') status = 'finished'
-  else if (['IN_PLAY', 'PAUSED', 'LIVE'].includes(match.status)) status = 'live'
+  else if (['IN_PLAY', 'PAUSED'].includes(match.status)) status = 'live'
 
   const homeScore = match.score?.fullTime?.home ?? null
   const awayScore = match.score?.fullTime?.away ?? null
