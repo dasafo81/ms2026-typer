@@ -80,6 +80,13 @@ export default function AdminPage() {
     await loadPlayers()
   }
 
+  async function deletePlayer(pid, name) {
+    if (!confirm(`Usunąć gracza "${name}" i wszystkie jego typy?`)) return
+    await supabase.from('predictions').delete().eq('player_id', pid)
+    await supabase.from('players').delete().eq('id', pid)
+    await loadPlayers()
+  }
+
   async function updateScore(matchId, field, value) {
     await supabase.from('matches').update({ [field]: parseInt(value) || 0, status: 'finished' }).eq('id', matchId)
     await loadMatches()
@@ -182,6 +189,17 @@ export default function AdminPage() {
                   }}
                 >
                   {p.is_admin ? 'Admin ✓' : 'Zrób adminem'}
+                </button>
+                <button
+                  onClick={() => deletePlayer(p.id, p.name)}
+                  style={{
+                    fontSize: 11, padding: '2px 8px', borderRadius: 6,
+                    background: 'var(--red-dim)', color: 'var(--red)',
+                    border: 'none', cursor: 'pointer'
+                  }}
+                  title="Usuń gracza"
+                >
+                  🗑️
                 </button>
               </div>
             ))}
