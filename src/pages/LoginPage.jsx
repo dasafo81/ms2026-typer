@@ -19,7 +19,11 @@ export default function LoginPage() {
       await login(name, email)
       navigate('/')
     } catch (err) {
-      setError('Błąd logowania. Spróbuj ponownie.')
+      if (err.message === 'PLAYER_NOT_FOUND') {
+        setError('Nie znamy tego adresu email. Sprawdź czy nie ma literówki — lista uczestników jest zamknięta. Jeśli to Twój pierwszy raz, skontaktuj się z administratorem.')
+      } else {
+        setError('Błąd logowania. Spróbuj ponownie.')
+      }
     } finally {
       setLoading(false)
     }
