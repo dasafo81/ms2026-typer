@@ -54,15 +54,8 @@ export function PlayerProvider({ children }) {
       .single()
 
     if (error && error.code === 'PGRST116') {
-      const colors = ['#e53935','#8e24aa','#1e88e5','#00897b','#f4511e','#6d4c41','#546e7a']
-      const color = colors[Math.floor(Math.random() * colors.length)]
-      const { data: newPlayer, error: insertError } = await supabase
-        .from('players')
-        .insert({ name: name.trim(), email: email.toLowerCase().trim(), avatar_color: color })
-        .select()
-        .single()
-      if (insertError) throw insertError
-      data = newPlayer
+      // Lista uczestników jest zamknięta — nowi gracze nie mogą się zarejestrować
+      throw new Error('PLAYER_NOT_FOUND')
     } else if (error) {
       throw error
     }
