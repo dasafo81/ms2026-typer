@@ -9,21 +9,25 @@ function computeBadges(playerName, allPreds, rows) {
     .filter(p => p.players?.name === playerName)
     .sort((a, b) => new Date(a.matches?.kickoff_at) - new Date(b.matches?.kickoff_at))
 
-  // Hat-trick złoty — 3 dokładne z rzędu
-  let exactStreak = 0, maxExact = 0
+  // Hat-trick złoty — 3 dokładne z rzędu, zlicz ile razy
+  let exactStreak = 0, goldCount = 0
   for (const p of myPreds) {
-    if (p.points_earned === 3) { exactStreak++; maxExact = Math.max(maxExact, exactStreak) }
-    else exactStreak = 0
+    if (p.points_earned === 3) {
+      exactStreak++
+      if (exactStreak % 3 === 0) goldCount++
+    } else exactStreak = 0
   }
-  if (maxExact >= 3) badges.push({ icon: '🎩', label: 'Hat-trick złoty', desc: '3 dokładne wyniki z rzędu' })
+  if (goldCount > 0) badges.push({ icon: '🎩', label: 'Hat-trick złoty', desc: '3 dokładne wyniki z rzędu', count: goldCount })
 
-  // Hat-trick srebrny — 3 trafione wyniki z rzędu (1 lub 3 pkt)
-  let hitStreak = 0, maxHit = 0
+  // Hat-trick srebrny — 3 trafione z rzędu (1 lub 3 pkt), zlicz ile razy
+  let hitStreak = 0, silverCount = 0
   for (const p of myPreds) {
-    if ((p.points_earned || 0) > 0) { hitStreak++; maxHit = Math.max(maxHit, hitStreak) }
-    else hitStreak = 0
+    if ((p.points_earned || 0) > 0) {
+      hitStreak++
+      if (hitStreak % 3 === 0) silverCount++
+    } else hitStreak = 0
   }
-  if (maxHit >= 3 && maxExact < 3) badges.push({ icon: '🎪', label: 'Hat-trick srebrny', desc: '3 trafione wyniki z rzędu' })
+  if (silverCount > 0 && goldCount === 0) badges.push({ icon: '🎪', label: 'Hat-trick srebrny', desc: '3 trafione wyniki z rzędu', count: silverCount })
 
   // Żelazny typer — wytypował wszystkie rozegrane mecze
   const finishedCount = allPreds.filter(p => p.players?.name === playerName).length
@@ -275,7 +279,16 @@ export default function LeaderboardPage() {
                             }}>
                               <span>{b.icon}</span>
                               <div>
-                                <div style={{ fontWeight: 700, fontSize: 12 }}>{b.label}</div>
+                                <div style={{ fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
+                                  {b.label}
+                                  {b.count > 1 && (
+                                    <span style={{
+                                      background: '#b8952a', color: '#fff',
+                                      borderRadius: 10, padding: '1px 6px',
+                                      fontSize: 10, fontWeight: 800
+                                    }}>×{b.count}</span>
+                                  )}
+                                </div>
                                 <div style={{ fontSize: 10, color: 'var(--text3)' }}>{b.desc}</div>
                               </div>
                             </div>
