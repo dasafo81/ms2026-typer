@@ -51,7 +51,6 @@ export default function LeaderboardPage() {
   const [rows, setRows] = useState([])
   const [stats, setStats] = useState({ onFire: null, sniper: null, unlucky: null })
   const [allPreds, setAllPreds] = useState([])
-  const [dailyPoints, setDailyPoints] = useState([])
   const [expanded, setExpanded] = useState(null)
   const [loading, setLoading] = useState(true)
   const { player } = usePlayer()
@@ -68,17 +67,14 @@ export default function LeaderboardPage() {
   async function load() {
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
-    const [{ data: leaderboard }, { data: recentMatches }, { data: allPredictions }, { data: daily }] = await Promise.all([
+    const [{ data: leaderboard }, { data: recentMatches }, { data: allPredictions }] = await Promise.all([
       supabase.from('leaderboard').select('*'),
       supabase.from('matches').select('id').eq('status', 'finished').gte('kickoff_at', since24h),
       supabase.from('predictions').select('*, players(name), matches(kickoff_at, status, home_score, away_score)'),
-      supabase.from('daily_points').select('*')
     ])
 
     const allRows = leaderboard || []
     setRows(allRows)
-    setDailyPoints(daily || [])
-
     const recentMatchIds = new Set((recentMatches || []).map(m => m.id))
     const preds = (allPredictions || []).filter(p => p.matches?.status === 'finished' && p.players)
     setAllPreds(preds)
@@ -137,9 +133,6 @@ export default function LeaderboardPage() {
 
   const medals = ['🥇', '🥈', '🥉']
 
-  // Wykres — zbierz wszystkie daty
-  const allDates = [...new Set(dailyPoints.map(d => d.match_date))].sort()
-  const last7 = allDates.slice(-7)
 
   return (
     <div>
@@ -154,16 +147,6 @@ export default function LeaderboardPage() {
           {stats.onFire && <Badge icon="🔥" title="W gazie" name={stats.onFire.name} sub={`+${stats.onFire.pts} pkt w ostatnich 24h`} color="#b8952a" bg="#b8952a12" />}
           {stats.sniper && <Badge icon="🎯" title="Snajper" name={stats.sniper.name} sub={`${stats.sniper.pct}% dokładnych wyników`} color="#1a7a4a" bg="#1a7a4a12" />}
           {stats.unlucky && <Badge icon="😬" title="Pechowiec" name={stats.unlucky.name} sub={`${stats.unlucky.streak} pudeł z rzędu`} color="#c0392b" bg="#c0392b12" />}
-        </div>
-      )}
-
-      {/* Wykres punktów w czasie */}
-      {!loading && last7.length > 1 && (
-        <div className="card" style={{ marginBottom: 20, padding: '16px 20px' }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text2)', marginBottom: 12, letterSpacing: 0.5, textTransform: 'uppercase' }}>
-            📈 Punkty w czasie
-          </div>
-          <PointsChart rows={rows} dailyPoints={dailyPoints} dates={last7} />
         </div>
       )}
 
@@ -317,73 +300,6 @@ export default function LeaderboardPage() {
           ))}
         </div>
       )}
-    </div>
-  )
-}
-
-function PointsChart({ rows, dailyPoints, dates }) {
-  // Skumulowane punkty per gracz per dzień
-  const colors = ['#b8952a','#1a7a4a','#c0392b','#1e88e5','#8e24aa','#f4511e','#00897b','#546e7a','#6d4c41','#e53935']
-  const top5 = rows.slice(0, 5)
-
-  const cumulative = top5.map((row, ri) => {
-    let sum = 0
-    return dates.map(date => {
-      const entry = dailyPoints.find(d => d.name === row.name && d.match_date === date)
-      sum += entry ? Number(entry.day_points) : 0
-      return sum
-    })
-  })
-
-  const maxPts = Math.max(...cumulative.flat(), 1)
-  const W = 580, H = 140, PAD = 32
-
-  return (
-    <div style={{ overflowX: 'auto' }}>
-      <svg width="100%" viewBox={`0 0 ${W} ${H + PAD}`} style={{ display: 'block' }}>
-        {/* Grid lines */}
-        {[0, 0.25, 0.5, 0.75, 1].map(t => (
-          <line key={t} x1={40} y1={H * (1 - t)} x2={W - 10} y2={H * (1 - t)}
-            stroke="#e8e0d0" strokeWidth="1" strokeDasharray={t === 0 ? '0' : '3,3'} />
-        ))}
-
-        {/* Lines per player */}
-        {top5.map((row, ri) => {
-          const pts = cumulative[ri]
-          const points = dates.map((_, di) => {
-            const x = 40 + (di / (dates.length - 1)) * (W - 50)
-            const y = H - (pts[di] / maxPts) * H
-            return `${x},${y}`
-          }).join(' ')
-          return (
-            <g key={row.id}>
-              <polyline points={points} fill="none" stroke={colors[ri % colors.length]} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-              {dates.map((_, di) => {
-                const x = 40 + (di / (dates.length - 1)) * (W - 50)
-                const y = H - (pts[di] / maxPts) * H
-                return <circle key={di} cx={x} cy={y} r="3.5" fill={colors[ri % colors.length]} />
-              })}
-            </g>
-          )
-        })}
-
-        {/* X labels */}
-        {dates.map((date, di) => {
-          const x = 40 + (di / (dates.length - 1)) * (W - 50)
-          const label = date.slice(5) // MM-DD
-          return <text key={di} x={x} y={H + 18} textAnchor="middle" fontSize="10" fill="#9a8a6a">{label}</text>
-        })}
-      </svg>
-
-      {/* Legenda */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
-        {top5.map((row, ri) => (
-          <div key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12 }}>
-            <div style={{ width: 12, height: 3, background: colors[ri % colors.length], borderRadius: 2 }} />
-            <span style={{ color: 'var(--text2)' }}>{row.name}</span>
-          </div>
-        ))}
-      </div>
     </div>
   )
 }
