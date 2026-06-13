@@ -41,12 +41,18 @@ export default function MatchesPage() {
     return true
   })
 
-  // Grupuj po fazie
+  // Sortuj chronologicznie
+  const sorted = [...filtered].sort((a, b) => new Date(a.kickoff_at) - new Date(b.kickoff_at))
+
+  // Grupuj po group_name tylko dla filtra 'open' i 'soon', reszta płasko
+  const useGroups = filter === 'open' || filter === 'soon'
   const groups = {}
-  for (const m of filtered) {
-    const key = m.group_name || m.stage
-    if (!groups[key]) groups[key] = []
-    groups[key].push(m)
+  if (useGroups) {
+    for (const m of sorted) {
+      const key = m.group_name || m.stage || 'Inne'
+      if (!groups[key]) groups[key] = []
+      groups[key].push(m)
+    }
   }
 
   return (
@@ -76,29 +82,45 @@ export default function MatchesPage() {
         <div style={{ color: 'var(--text2)', textAlign: 'center', padding: 40 }}>Ładowanie...</div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text2)' }}>Brak meczów</div>
+      ) : useGroups && Object.keys(groups).length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {Object.entries(groups).map(([groupName, groupMatches]) => (
+            <div key={groupName}>
+              <div style={{
+                fontSize: 11, fontWeight: 700, letterSpacing: 1.5,
+                color: 'var(--text3)', textTransform: 'uppercase',
+                marginBottom: 8, paddingLeft: 2,
+                borderLeft: '3px solid var(--gold)',
+                paddingLeft: 10
+              }}>
+                {groupName}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {groupMatches.map(match => (
+                  <MatchCard
+                    key={match.id}
+                    match={match}
+                    prediction={predictions[match.id]}
+                    playerId={player?.id}
+                    onSaved={loadAll}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       ) : (
-        Object.entries(groups).map(([groupName, groupMatches]) => (
-          <div key={groupName} style={{ marginBottom: 28 }}>
-            <div style={{
-              fontSize: 11, fontWeight: 700, letterSpacing: 1.5,
-              color: 'var(--text3)', textTransform: 'uppercase',
-              marginBottom: 10, paddingLeft: 2
-            }}>
-              {groupName}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {groupMatches.map(match => (
-                <MatchCard
-                  key={match.id}
-                  match={match}
-                  prediction={predictions[match.id]}
-                  playerId={player?.id}
-                  onSaved={loadAll}
-                />
-              ))}
-            </div>
-          </div>
-        ))
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {sorted.map(match => (
+            <MatchCard
+              key={match.id}
+              match={match}
+              prediction={predictions[match.id]}
+              playerId={player?.id}
+              onSaved={loadAll}
+            />
+          ))}
+        </div>
       )}
     </div>
   )
