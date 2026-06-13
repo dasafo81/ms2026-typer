@@ -5,6 +5,7 @@ import { usePlayer } from '../hooks/usePlayer'
 export default function LeaderboardPage() {
   const [rows, setRows] = useState([])
   const [stats, setStats] = useState({ onFire: null, sniper: null, unlucky: null })
+  const [allPreds, setAllPreds] = useState([])
   const [loading, setLoading] = useState(true)
   const { player } = usePlayer()
 
@@ -18,26 +19,27 @@ export default function LeaderboardPage() {
   }, [])
 
   async function load() {
-    const [{ data: leaderboard }, { data: preds }] = await Promise.all([
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+    const [{ data: leaderboard }, { data: recentMatches }, { data: allPredictions }] = await Promise.all([
       supabase.from('leaderboard').select('*'),
-      supabase.from('predictions')
-        .select('*, players(name, avatar_color), matches(kickoff_at, status)')
-        .eq('matches.status', 'finished')
+      supabase.from('matches').select('id').eq('status', 'finished').gte('kickoff_at', since24h),
+      supabase.from('predictions').select('*, players(name), matches(kickoff_at, status)').eq('matches.status', 'finished')
     ])
 
     const allRows = leaderboard || []
     setRows(allRows)
 
+    const recentMatchIds = new Set((recentMatches || []).map(m => m.id))
+    const allPreds = (allPredictions || []).filter(p => p.matches && p.players)
+
     // Statystyki
     const now = new Date()
-    const since24h = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-    const allPreds = (preds || []).filter(p => p.matches && p.players)
 
     // 🔥 W gazie — najwięcej punktów w ostatnich 24h
     const recentPts = {}
     for (const p of allPreds) {
-      const kickoff = new Date(p.matches.kickoff_at)
-      if (kickoff >= since24h) {
+      if (recentMatchIds.has(p.match_id)) {
         const name = p.players.name
         recentPts[name] = (recentPts[name] || 0) + (p.points_earned || 0)
       }
@@ -47,13 +49,20 @@ export default function LeaderboardPage() {
       ? { name: onFireEntry[0], pts: onFireEntry[1] }
       : null
 
-    // 🎯 Snajper — najwyższy % dokładnych wyników (min 3 typy)
+    // 🎯 Snajper — najwyższy % dokładnych wyników (min 3 rozegranych)
+    // Policz ile rozegranych typów ma każdy gracz
+    const finishedPerPlayer = {}
+    for (const p of allPreds) {
+      const name = p.players.name
+      finishedPerPlayer[name] = (finishedPerPlayer[name] || 0) + 1
+    }
+
     const sniperData = allRows
-      .filter(r => Number(r.predictions_count) >= 3)
+      .filter(r => (finishedPerPlayer[r.name] || 0) >= 3)
       .map(r => ({
         name: r.name,
-        pct: Number(r.predictions_count) > 0
-          ? Math.round((Number(r.exact_hits) / Number(r.predictions_count)) * 100)
+        pct: finishedPerPlayer[r.name] > 0
+          ? Math.round((Number(r.exact_hits) / finishedPerPlayer[r.name]) * 100)
           : 0
       }))
       .sort((a, b) => b.pct - a.pct)
@@ -82,6 +91,7 @@ export default function LeaderboardPage() {
       ? { name: unluckyEntry[0], streak: unluckyEntry[1] }
       : null
 
+    setAllPreds(allPreds)
     setStats({ onFire, sniper, unlucky })
     setLoading(false)
   }
@@ -140,8 +150,9 @@ export default function LeaderboardPage() {
           {rows.map((row, i) => {
             const isMe = row.id === player?.id
             const medal = medals[i]
-            const exactPct = Number(row.predictions_count) > 0
-              ? Math.round((Number(row.exact_hits) / Number(row.predictions_count)) * 100)
+            const finishedCount = allPreds.filter(p => p.players?.name === row.name).length
+            const exactPct = finishedCount > 0
+              ? Math.round((Number(row.exact_hits) / finishedCount) * 100)
               : 0
 
             return (
@@ -190,9 +201,9 @@ export default function LeaderboardPage() {
                     {stats.unlucky?.name === row.name && <span title="Pechowiec">😬</span>}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
-                    {row.predictions_count} typów
+                    {row.predictions_count} typów · {finishedCount} rozegranych
                     {Number(row.exact_hits) > 0 && ` · ${row.exact_hits}× dokładny`}
-                    {exactPct > 0 && ` · ${exactPct}% skuteczność`}
+                    {exactPct > 0 && ` · ${exactPct}% celność`}
                   </div>
                 </div>
 
