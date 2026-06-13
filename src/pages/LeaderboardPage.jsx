@@ -158,7 +158,7 @@ export default function LeaderboardPage() {
         <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
           {stats.onFire && <Badge icon="🔥" title="W gazie" name={stats.onFire.name} sub={`+${stats.onFire.pts} pkt w ostatnich 24h`} color="#b8952a" bg="#b8952a12" />}
           {stats.sniper && <Badge icon="🏹" title="Snajper" name={stats.sniper.name} sub={`${stats.sniper.pct}% dokładnych wyników`} color="#1a7a4a" bg="#1a7a4a12" />}
-          {stats.unlucky && <Badge icon="😬" title="Pechowiec" name={stats.unlucky.name} sub={`${stats.unlucky.streak} pudeł z rzędu`} color="#c0392b" bg="#c0392b12" />}
+          {stats.unlucky && <Badge icon="😭" title="Pechowiec" name={stats.unlucky.name} sub={`${stats.unlucky.streak} pudła z rzędu`} color="#c0392b" bg="#c0392b12" />}
         </div>
       )}
 
@@ -207,7 +207,7 @@ export default function LeaderboardPage() {
                       {isMe && <span style={{ fontSize: 11, color: 'var(--gold2)', fontWeight: 400 }}>(ty)</span>}
                       {stats.onFire?.name === row.name && <span title="W gazie">🔥</span>}
                       {stats.sniper?.name === row.name && <span title="Snajper">🏹</span>}
-                      {stats.unlucky?.name === row.name && <span title="Pechowiec">😬</span>}
+                      {stats.unlucky?.name === row.name && <span title="Pechowiec">😭</span>}
                       {badges.map(b => <span key={b.label} title={b.desc}>{b.icon}</span>)}
                     </div>
                     <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
