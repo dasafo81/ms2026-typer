@@ -9,13 +9,21 @@ function computeBadges(playerName, allPreds, rows) {
     .filter(p => p.players?.name === playerName)
     .sort((a, b) => new Date(a.matches?.kickoff_at) - new Date(b.matches?.kickoff_at))
 
-  // Hat-trick — 3 dokładne z rzędu
+  // Hat-trick złoty — 3 dokładne z rzędu
   let exactStreak = 0, maxExact = 0
   for (const p of myPreds) {
     if (p.points_earned === 3) { exactStreak++; maxExact = Math.max(maxExact, exactStreak) }
     else exactStreak = 0
   }
-  if (maxExact >= 3) badges.push({ icon: '🎩', label: 'Hat-trick', desc: '3 dokładne z rzędu' })
+  if (maxExact >= 3) badges.push({ icon: '🎩', label: 'Hat-trick złoty', desc: '3 dokładne wyniki z rzędu' })
+
+  // Hat-trick srebrny — 3 trafione wyniki z rzędu (1 lub 3 pkt)
+  let hitStreak = 0, maxHit = 0
+  for (const p of myPreds) {
+    if ((p.points_earned || 0) > 0) { hitStreak++; maxHit = Math.max(maxHit, hitStreak) }
+    else hitStreak = 0
+  }
+  if (maxHit >= 3 && maxExact < 3) badges.push({ icon: '🎪', label: 'Hat-trick srebrny', desc: '3 trafione wyniki z rzędu' })
 
   // Żelazny typer — wytypował wszystkie rozegrane mecze
   const finishedCount = allPreds.filter(p => p.players?.name === playerName).length
@@ -145,7 +153,7 @@ export default function LeaderboardPage() {
       {!loading && (stats.onFire || stats.sniper || stats.unlucky) && (
         <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
           {stats.onFire && <Badge icon="🔥" title="W gazie" name={stats.onFire.name} sub={`+${stats.onFire.pts} pkt w ostatnich 24h`} color="#b8952a" bg="#b8952a12" />}
-          {stats.sniper && <Badge icon="🎯" title="Snajper" name={stats.sniper.name} sub={`${stats.sniper.pct}% dokładnych wyników`} color="#1a7a4a" bg="#1a7a4a12" />}
+          {stats.sniper && <Badge icon="🏹" title="Snajper" name={stats.sniper.name} sub={`${stats.sniper.pct}% dokładnych wyników`} color="#1a7a4a" bg="#1a7a4a12" />}
           {stats.unlucky && <Badge icon="😬" title="Pechowiec" name={stats.unlucky.name} sub={`${stats.unlucky.streak} pudeł z rzędu`} color="#c0392b" bg="#c0392b12" />}
         </div>
       )}
@@ -154,6 +162,7 @@ export default function LeaderboardPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {rows.map((row, i) => {
             const isMe = row.id === player?.id
+            const isLast = i === rows.length - 1
             const medal = medals[i]
             const finishedCount = allPreds.filter(p => p.players?.name === row.name).length
             const exactPct = finishedCount > 0 ? Math.round((Number(row.exact_hits) / finishedCount) * 100) : 0
@@ -182,8 +191,8 @@ export default function LeaderboardPage() {
                     borderBottomRightRadius: isExpanded ? 0 : undefined,
                   }}
                 >
-                  <div style={{ width: 32, textAlign: 'center', fontSize: medal ? 20 : 14, fontWeight: 700, color: medal ? undefined : 'var(--text3)', fontFamily: 'Space Grotesk' }}>
-                    {medal || i + 1}
+                  <div style={{ width: 32, textAlign: 'center', fontSize: medal || isLast ? 20 : 14, fontWeight: 700, color: medal ? undefined : isLast ? undefined : 'var(--text3)', fontFamily: 'Space Grotesk' }}>
+                    {medal || (isLast ? '🔴' : i + 1)}
                   </div>
                   <div style={{ width: 40, height: 40, borderRadius: '50%', background: row.avatar_color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
                     {row.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
@@ -193,7 +202,7 @@ export default function LeaderboardPage() {
                       {row.name}
                       {isMe && <span style={{ fontSize: 11, color: 'var(--gold2)', fontWeight: 400 }}>(ty)</span>}
                       {stats.onFire?.name === row.name && <span title="W gazie">🔥</span>}
-                      {stats.sniper?.name === row.name && <span title="Snajper">🎯</span>}
+                      {stats.sniper?.name === row.name && <span title="Snajper">🏹</span>}
                       {stats.unlucky?.name === row.name && <span title="Pechowiec">😬</span>}
                       {badges.map(b => <span key={b.label} title={b.desc}>{b.icon}</span>)}
                     </div>
