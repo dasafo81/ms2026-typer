@@ -129,12 +129,13 @@ export default function LeaderboardPage() {
       const playerPreds = preds
         .filter(p => p.players.name === row.name)
         .sort((a, b) => new Date(a.matches.kickoff_at) - new Date(b.matches.kickoff_at))
-      let streak = 0, maxStreak = 0
-      for (const p of playerPreds) {
-        if ((p.points_earned || 0) === 0) { streak++; maxStreak = Math.max(maxStreak, streak) }
-        else streak = 0
+      // Liczymy AKTUALNĄ serię pudeł od końca
+      let currentStreak = 0
+      for (let i = playerPreds.length - 1; i >= 0; i--) {
+        if ((playerPreds[i].points_earned || 0) === 0) currentStreak++
+        else break
       }
-      streaks[row.name] = maxStreak
+      streaks[row.name] = currentStreak
     }
     const unluckyEntry = Object.entries(streaks).sort((a, b) => b[1] - a[1])[0]
     const unlucky = unluckyEntry && unluckyEntry[1] >= 2 ? { name: unluckyEntry[0], streak: unluckyEntry[1] } : null
