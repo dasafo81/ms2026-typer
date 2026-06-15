@@ -3,13 +3,14 @@ import { usePlayer } from '../hooks/usePlayer'
 import { useEffect } from 'react'
 
 export default function Layout() {
-  const { player, logout } = usePlayer()
+  const { player, loading, logout } = usePlayer()
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (!player) navigate('/login')
-  }, [player])
+    if (!loading && !player) navigate('/login')
+  }, [player, loading])
 
+  if (loading) return null
   if (!player) return null
 
   const initials = player.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
