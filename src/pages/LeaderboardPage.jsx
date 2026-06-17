@@ -160,21 +160,7 @@ export default function LeaderboardPage() {
 
       {loading ? <Skeleton /> : rows.length === 0 ? <Empty /> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {(() => {
-            // Znajdź rekordzistę czarnej serii
-            const missStreaks = rows.map(r => {
-              const rPreds = allPreds
-                .filter(p => p.players?.name === r.name)
-                .sort((a, b) => new Date(a.matches?.kickoff_at) - new Date(b.matches?.kickoff_at))
-              let maxMiss = 0, cur = 0
-              for (const p of rPreds) {
-                if ((p.points_earned || 0) === 0) { cur++; maxMiss = Math.max(maxMiss, cur) }
-                else cur = 0
-              }
-              return { name: r.name, max: maxMiss }
-            })
-            const topMiss = missStreaks.sort((a, b) => b.max - a.max)[0]
-            return rows.map((row, i) => {
+          {rows.map((row, i) => {
             const isMe = row.id === player?.id
             const isLast = i === rows.length - 1
             const medal = medals[i]
@@ -316,8 +302,6 @@ export default function LeaderboardPage() {
               </div>
             )
           })}
-            )
-          })()}
         </div>
       )}
 
