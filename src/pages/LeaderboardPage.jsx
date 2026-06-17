@@ -141,6 +141,18 @@ export default function LeaderboardPage() {
 
   const medals = ['🥇', '🥈', '🥉']
 
+  const missStreaks = rows.map(r => {
+    const rPreds = allPreds
+      .filter(p => p.players?.name === r.name)
+      .sort((a, b) => new Date(a.matches?.kickoff_at) - new Date(b.matches?.kickoff_at))
+    let maxMiss = 0, cur = 0
+    for (const p of rPreds) {
+      if ((p.points_earned || 0) === 0) { cur++; maxMiss = Math.max(maxMiss, cur) }
+      else cur = 0
+    }
+    return { name: r.name, max: maxMiss }
+  })
+  const topMiss = [...missStreaks].sort((a, b) => b.max - a.max)[0]
 
   return (
     <div>
