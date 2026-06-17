@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 import { usePlayer } from '../hooks/usePlayer'
 
 // Odznaki za osiągnięcia
-function computeBadges(playerName, allPreds, rows) {
+function computeBadges(playerName, allPreds, rows, isBlackSeriesChamp = false, blackSeriesCount = 0) {
   const badges = []
   const myPreds = allPreds
     .filter(p => p.players?.name === playerName)
@@ -41,20 +41,15 @@ function computeBadges(playerName, allPreds, rows) {
   if (finishedCount >= 4 && Number(row?.exact_hits) / finishedCount >= 0.5)
     badges.push({ icon: '🎯', label: 'Snajper', desc: '50%+ dokładnych wyników' })
 
-  // Czarna seria — 5+ pudeł z rzędu
-  let missStreak = 0, maxMiss = 0
-  for (const p of myPreds) {
-    if ((p.points_earned || 0) === 0) { missStreak++; maxMiss = Math.max(maxMiss, missStreak) }
-    else missStreak = 0
-  }
-  if (maxMiss >= 5) badges.push({ icon: '💀', label: 'Czarna seria', desc: `${maxMiss} pudeł z rzędu` })
-
   // Szczęściarz — trafił wynik z różnicą 3+ goli
   const bigUpset = myPreds.find(p =>
     p.points_earned === 3 &&
     Math.abs((p.matches?.home_score || 0) - (p.matches?.away_score || 0)) >= 3
   )
   if (bigUpset) badges.push({ icon: '🍀', label: 'Szczęściarz', desc: 'Trafił wynik z 3+ goli różnicy' })
+
+  if (isBlackSeriesChamp && blackSeriesCount >= 5)
+    badges.push({ icon: '💀', label: 'Czarna seria', desc: `Rekord: ${blackSeriesCount} pudeł z rzędu` })
 
   return badges
 }
@@ -165,13 +160,28 @@ export default function LeaderboardPage() {
 
       {loading ? <Skeleton /> : rows.length === 0 ? <Empty /> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {rows.map((row, i) => {
+          {(() => {
+            // Znajdź rekordzistę czarnej serii
+            const missStreaks = rows.map(r => {
+              const rPreds = allPreds
+                .filter(p => p.players?.name === r.name)
+                .sort((a, b) => new Date(a.matches?.kickoff_at) - new Date(b.matches?.kickoff_at))
+              let maxMiss = 0, cur = 0
+              for (const p of rPreds) {
+                if ((p.points_earned || 0) === 0) { cur++; maxMiss = Math.max(maxMiss, cur) }
+                else cur = 0
+              }
+              return { name: r.name, max: maxMiss }
+            })
+            const topMiss = missStreaks.sort((a, b) => b.max - a.max)[0]
+            return rows.map((row, i) => {
             const isMe = row.id === player?.id
             const isLast = i === rows.length - 1
             const medal = medals[i]
             const finishedCount = allPreds.filter(p => p.players?.name === row.name).length
             const exactPct = finishedCount > 0 ? Math.round((Number(row.exact_hits) / finishedCount) * 100) : 0
-            const badges = computeBadges(row.name, allPreds, rows)
+            const isBlackChamp = topMiss && topMiss.name === row.name && topMiss.max >= 5
+            const badges = computeBadges(row.name, allPreds, rows, isBlackChamp, topMiss?.max || 0)
             const isExpanded = expanded === row.id
 
             // Forma tygodnia — ostatnie 7 rozegranych typów
@@ -306,6 +316,8 @@ export default function LeaderboardPage() {
               </div>
             )
           })}
+            )
+          })()}
         </div>
       )}
 
