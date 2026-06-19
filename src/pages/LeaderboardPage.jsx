@@ -103,14 +103,15 @@ export default function LeaderboardPage() {
       })[0]
     const onFire = onFireEntry && onFireEntry[1] > 0 ? { name: onFireEntry[0], pts: onFireEntry[1] } : null
 
-    // 🎯 Snajper
+    // 🎯 Snajper — tylko spośród żelaznych typerów (wytypowali wszystkie rozegrane mecze)
     const finishedPerPlayer = {}
     for (const p of preds) {
       const name = p.players.name
       finishedPerPlayer[name] = (finishedPerPlayer[name] || 0) + 1
     }
+    const totalFinishedMatches = new Set(preds.map(p => p.match_id)).size
     const sniperData = allRows
-      .filter(r => (finishedPerPlayer[r.name] || 0) >= 3)
+      .filter(r => (finishedPerPlayer[r.name] || 0) === totalFinishedMatches && totalFinishedMatches >= 3)
       .map(r => ({
         name: r.name,
         pct: Math.round((Number(r.exact_hits) / finishedPerPlayer[r.name]) * 100)
