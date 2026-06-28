@@ -60,8 +60,7 @@ export default function MatchesPage() {
   const groups = {}
   if (useGroups) {
     for (const m of sorted) {
-      const rawKey = m.group_name || m.stage
-      const key = STAGE_LABELS[rawKey] || STAGE_LABELS[m.stage] || rawKey
+      const key = m.group_name || STAGE_LABELS[m.stage] || m.stage
       if (!groups[key]) groups[key] = []
       groups[key].push(m)
     }
