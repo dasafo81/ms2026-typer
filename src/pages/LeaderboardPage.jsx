@@ -90,16 +90,7 @@ function computeBadges(playerName, allPreds, rows, isBlackSeriesChamp = false, b
   const hitPen = knockoutPreds.filter(p => p.pts_penalty > 0).length
   if (hitPen >= 1) badges.push({ icon: '🥊', label: 'Karniarz', desc: `${hitPen}× trafione karne`, count: hitPen > 1 ? hitPen : 0 })
 
-  // 🔥 Ninja — aktualnie 3+ meczów z rzędu bez pudła (liczymy od końca)
-  let currentNinja = 0
-  for (let i = myAllPreds.length - 1; i >= 0; i--) {
-    const p = myAllPreds[i]
-    if (p.matches?.status !== 'finished') continue
-    const totalPts = (p.points_earned||0)+(p.pts_advancement||0)+(p.pts_extra_time||0)+(p.pts_penalty||0)
-    if (totalPts > 0) currentNinja++
-    else break
-  }
-  if (currentNinja >= 3) badges.push({ icon: '🔥', label: 'Ninja', desc: `${currentNinja} meczów z rzędu bez pudła` })
+
 
   // 👻 Duch — nie wytypował ani jednego meczu pucharowego
   if (allKnockoutMatches >= 4 && totalKnockout === 0) badges.push({ icon: '👻', label: 'Duch', desc: 'Zniknął w fazie pucharowej' })
