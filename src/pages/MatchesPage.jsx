@@ -5,18 +5,47 @@ import { useTheme } from '../hooks/useTheme'
 import { format } from 'date-fns'
 import { pl } from 'date-fns/locale'
 
+// Jeden poprawny schemat. Krótkie klucze i surowe wartości z API
+// mapują się na TEN SAM polski string, więc duplikaty się scalają.
 const STAGE_LABELS = {
-  r32: '1/32 finału',
   group: 'Faza grupowa',
-  r16: '1/16 finału',
-  qf: '1/8 finału',
-  sf: '1/4 finału',
-  final: 'Finał',
+  GROUP_STAGE: 'Faza grupowa',
+  r32: '1/16 finału',
   LAST_32: '1/16 finału',
-  ROUND_OF_16: '1/16 finału',
-  QUARTER_FINALS: '1/8 finału',
-  SEMI_FINALS: '1/4 finału',
+  ROUND_OF_32: '1/16 finału',
+  r16: '1/8 finału',
+  LAST_16: '1/8 finału',
+  ROUND_OF_16: '1/8 finału',
+  qf: '1/4 finału',
+  QUARTER_FINALS: '1/4 finału',
+  sf: '1/2 finału',
+  SEMI_FINALS: '1/2 finału',
+  third: 'o 3. miejsce',
+  THIRD_PLACE: 'o 3. miejsce',
+  final: 'Finał',
   FINAL: 'Finał'
+}
+
+const KNOCKOUT_STAGES = [
+  'r32', 'r16', 'qf', 'sf', 'third', 'final',
+  'LAST_32', 'ROUND_OF_32', 'LAST_16', 'ROUND_OF_16',
+  'QUARTER_FINALS', 'SEMI_FINALS', 'THIRD_PLACE', 'FINAL'
+]
+
+// Pucharowy = stage nie jest grupowy, albo (siatka bezpieczeństwa)
+// sync wrzucił mecz ze stage='group' a group_name to wartość pucharowa.
+function isKnockoutMatch(m) {
+  if (m.stage && m.stage !== 'group' && m.stage !== 'GROUP_STAGE') return true
+  if (KNOCKOUT_STAGES.includes(m.group_name)) return true
+  return false
+}
+
+// Nagłówek sekcji: grupa -> nazwa grupy; puchar -> zawsze polska etykieta.
+function sectionKey(m) {
+  if (isKnockoutMatch(m)) {
+    return STAGE_LABELS[m.group_name] || STAGE_LABELS[m.stage] || m.group_name || m.stage
+  }
+  return m.group_name || 'Faza grupowa'
 }
 
 export default function MatchesPage() {
@@ -61,7 +90,7 @@ export default function MatchesPage() {
   const groups = {}
   if (useGroups) {
     for (const m of sorted) {
-      const key = m.group_name || STAGE_LABELS[m.stage] || m.stage
+      const key = sectionKey(m)
       if (!groups[key]) groups[key] = []
       groups[key].push(m)
     }
@@ -130,7 +159,7 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
   const isOpen = match.status === 'scheduled' && kickoff > now
   const isLive = match.status === 'live'
   const isFinished = match.status === 'finished'
-  const isKnockout = match.stage !== 'group'
+  const isKnockout = isKnockoutMatch(match)
 
   const [home, setHome] = useState(prediction?.pred_home ?? '')
   const [away, setAway] = useState(prediction?.pred_away ?? '')
@@ -190,7 +219,7 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
         <div style={{ minWidth: 80 }}>
           {isKnockout && (
             <div style={{ fontSize: 9, fontWeight: 700, color: theme.accent, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>
-              {STAGE_LABELS[match.stage] || match.stage}
+              {STAGE_LABELS[match.stage] || STAGE_LABELS[match.group_name] || match.stage}
             </div>
           )}
           {isLive && <span style={{ fontSize: 11, color: '#e24b4a', fontWeight: 700 }}>● LIVE</span>}
