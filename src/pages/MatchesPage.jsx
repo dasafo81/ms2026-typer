@@ -6,6 +6,7 @@ import { format } from 'date-fns'
 import { pl } from 'date-fns/locale'
 
 const STAGE_LABELS = {
+  r32: '1/32 finału',
   group: 'Faza grupowa',
   r16: '1/16 finału',
   qf: '1/8 finału',

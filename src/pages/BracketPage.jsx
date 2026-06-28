@@ -3,8 +3,9 @@ import { supabase } from '../lib/supabase'
 import { usePlayer } from '../hooks/usePlayer'
 import { useTheme } from '../hooks/useTheme'
 
-const STAGES = ['r16', 'qf', 'sf', 'final']
-const STAGE_LABELS = { r16: '1/16 finału', qf: '1/8 finału', sf: '1/4 finału', final: 'Finał' }
+const STAGES = ['r32', 'r16', 'qf', 'sf', 'final']
+const STAGE_LABELS = {
+  r32: '1/32 finału', r16: '1/16 finału', qf: '1/8 finału', sf: '1/4 finału', final: 'Finał' }
 
 export default function BracketPage() {
   const [matches, setMatches] = useState([])
