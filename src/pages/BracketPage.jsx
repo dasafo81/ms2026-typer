@@ -5,7 +5,7 @@ import { useTheme } from '../hooks/useTheme'
 
 const STAGES = ['r32', 'r16', 'qf', 'sf', 'final']
 const STAGE_LABELS = {
-  r32: '1/32 finału', r16: '1/16 finału', qf: '1/8 finału', sf: '1/4 finału', final: 'Finał' }
+  r32: '1/16 finału', r16: '1/8 finału', qf: '1/4 finału', sf: '1/2 finału', final: 'Finał' }
 
 export default function BracketPage() {
   const [matches, setMatches] = useState([])
