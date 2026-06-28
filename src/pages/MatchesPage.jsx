@@ -138,24 +138,17 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
+  const isDrawScore = home !== '' && away !== '' && parseInt(home) === parseInt(away)
   const showKnockoutOptions = isKnockout && isOpen
-  const showDrawOptions = isKnockout && isOpen && home !== '' && away !== '' && parseInt(home) === parseInt(away)
-  const extraTime = showDrawOptions  // przy remisie zawsze jest dogrywka
+  const showDrawOptions = isKnockout && isOpen && isDrawScore
 
-  // Auto-ustaw awansującego i dogrywkę na podstawie wyniku
+  // Auto-ustaw awansującego i karne na podstawie wyniku
   useEffect(() => {
     if (!isKnockout || !isOpen || home === '' || away === '') return
     const h = parseInt(home), a = parseInt(away)
     if (isNaN(h) || isNaN(a)) return
-    if (h > a) {
-      setWinner(match.home_team)
-      setExtraTime(false)
-      setPenalty(false)
-    } else if (a > h) {
-      setWinner(match.away_team)
-      setExtraTime(false)
-      setPenalty(false)
-    }
+    if (h > a) { setWinner(match.home_team); setPenalty(false) }
+    else if (a > h) { setWinner(match.away_team); setPenalty(false) }
   }, [home, away])
 
   async function savePrediction() {
@@ -170,11 +163,10 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
       pts_advancement: 0,
       pts_extra_time: 0,
       pts_penalty: 0,
-      pts_winner: 0,
     }
     if (isKnockout) {
-      payload.pred_extra_time = extraTime
-      payload.pred_penalty = penalty
+      payload.pred_extra_time = isDrawScore
+      payload.pred_penalty = isDrawScore ? penalty : false
       payload.pred_winner = winner || null
     }
     await supabase.from('predictions').upsert(payload, { onConflict: 'player_id,match_id' })
@@ -185,20 +177,15 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
   }
 
   const totalPts = (prediction?.points_earned || 0) + (prediction?.pts_advancement || 0) +
-    (prediction?.pts_extra_time || 0) + (prediction?.pts_penalty || 0) + (prediction?.pts_winner || 0)
-
-  const cardStyle = {
-    background: theme.bg2,
-    border: `1px solid ${isLive ? '#e24b4a' : theme.border}`,
-    borderRadius: 12,
-    padding: '14px 18px',
-    ...(isKnockout && { borderLeft: `3px solid ${theme.accent}` })
-  }
+    (prediction?.pts_extra_time || 0) + (prediction?.pts_penalty || 0)
 
   return (
-    <div style={cardStyle}>
+    <div style={{
+      background: theme.bg2, border: `1px solid ${isLive ? '#e24b4a' : theme.border}`,
+      borderRadius: 12, padding: '14px 18px',
+      ...(isKnockout && { borderLeft: `3px solid ${theme.accent}` })
+    }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        {/* Status */}
         <div style={{ minWidth: 80 }}>
           {isKnockout && (
             <div style={{ fontSize: 9, fontWeight: 700, color: theme.accent, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 3 }}>
@@ -210,30 +197,25 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
           {isOpen && <span style={{ fontSize: 11, color: theme.text2 }}>{format(kickoff, 'dd.MM HH:mm', { locale: pl })}</span>}
         </div>
 
-        {/* Mecz */}
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', minWidth: 200 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: theme.text, textAlign: 'right', minWidth: 80 }}>
             {match.home_flag} {match.home_team}
           </span>
-
           {isFinished || isLive ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: theme.bg3, borderRadius: 8, padding: '6px 14px' }}>
               <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'Space Grotesk', color: theme.text }}>{match.home_score ?? '–'}</span>
               <span style={{ color: theme.text3, fontSize: 14 }}>:</span>
               <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'Space Grotesk', color: theme.text }}>{match.away_score ?? '–'}</span>
               {match.penalty && <span style={{ fontSize: 10, color: '#e24b4a', marginLeft: 4 }}>k</span>}
-              {match.extra_time && !match.penalty && <span style={{ fontSize: 10, color: theme.accent, marginLeft: 4 }}>d</span>}
             </div>
           ) : (
             <div style={{ color: theme.text3, fontSize: 20, fontWeight: 700 }}>vs</div>
           )}
-
           <span style={{ fontSize: 14, fontWeight: 600, color: theme.text, minWidth: 80 }}>
             {match.away_team} {match.away_flag}
           </span>
         </div>
 
-        {/* Typ */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 160, justifyContent: 'flex-end' }}>
           {isOpen ? (
             <>
@@ -250,7 +232,7 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
                   background: saved ? `${theme.accent}22` : theme.accent,
                   color: saved ? theme.accent : (knockout ? '#0f0e17' : '#000'),
                   border: saved ? `1px solid ${theme.accent}` : 'none',
-                  cursor: 'pointer', transition: 'all 0.15s', opacity: saving ? 0.6 : 1
+                  cursor: 'pointer', opacity: saving ? 0.6 : 1
                 }}>
                 {saved ? '✓' : saving ? '...' : 'Zapisz'}
               </button>
@@ -276,13 +258,8 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
         </div>
       </div>
 
-      {/* Opcje pucharowe — przy remisie po 90 min */}
       {showKnockoutOptions && (
-        <div style={{
-          marginTop: 12, padding: '10px 14px',
-          background: theme.bg3, borderRadius: 8,
-          border: `1px solid ${theme.accent}33`
-        }}>
+        <div style={{ marginTop: 12, padding: '10px 14px', background: theme.bg3, borderRadius: 8, border: `1px solid ${theme.accent}33` }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: theme.accent, letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
             Opcje pucharowe
           </div>
@@ -297,31 +274,19 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
               </select>
             </div>
             {showDrawOptions && (
-              <>
-                <label style={{ fontSize: 13, color: theme.text2, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={extraTime} onChange={e => { setExtraTime(e.target.checked); if (!e.target.checked) setPenalty(false) }}
-                    style={{ accentColor: theme.accent }} />
-                  Dogrywka (+1 pkt)
-                </label>
-                {extraTime && (
-                  <label style={{ fontSize: 13, color: theme.text2, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                    <input type="checkbox" checked={penalty} onChange={e => setPenalty(e.target.checked)}
-                      style={{ accentColor: theme.accent }} />
-                    Karne (+1 pkt)
-                  </label>
-                )}
-              </>
+              <label style={{ fontSize: 13, color: theme.text2, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                <input type="checkbox" checked={penalty} onChange={e => setPenalty(e.target.checked)}
+                  style={{ accentColor: theme.accent }} />
+                Karne (+1 pkt)
+              </label>
+            )}
+            {!showDrawOptions && (
+              <span style={{ fontSize: 11, color: theme.text3 }}>Wpisz remis żeby odblokować opcję karnych</span>
             )}
           </div>
-          {!showDrawOptions && (
-            <div style={{ fontSize: 11, color: theme.text3, marginTop: 6 }}>
-              Wpisz remis żeby odblokować opcję karnych
-            </div>
-          )}
         </div>
       )}
 
-      {/* Podsumowanie typów pucharowych — po zamknięciu */}
       {isFinished && prediction && isKnockout && (
         <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {prediction.pred_winner && (
@@ -331,10 +296,10 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
               </span>
             </span>
           )}
-          {prediction.pred_extra_time !== null && prediction.pred_extra_time !== undefined && (
+          {prediction.pred_penalty !== null && prediction.pred_penalty !== undefined && (
             <span style={{ fontSize: 11, color: theme.text3 }}>
-              Dogrywka: <span style={{ color: prediction.pts_extra_time > 0 ? '#1a7a4a' : '#c0392b' }}>
-                {prediction.pred_extra_time ? 'Tak' : 'Nie'} {prediction.pts_extra_time > 0 ? '✓' : '✗'}
+              Karne: <span style={{ color: prediction.pts_penalty > 0 ? '#1a7a4a' : '#c0392b' }}>
+                {prediction.pred_penalty ? 'Tak' : 'Nie'} {prediction.pts_penalty > 0 ? '✓' : '✗'}
               </span>
             </span>
           )}
