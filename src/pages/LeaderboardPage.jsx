@@ -51,13 +51,13 @@ function computeBadges(playerName, allPreds, rows, isBlackSeriesChamp = false, b
   }
   if (maxAwans >= 5) badges.push({ icon: '🐙', label: 'Paul', desc: `${maxAwans} trafionych awansów z rzędu jak ośmiornica` })
 
-  // 🍕 Kebab o 3 w nocy — trafił mecz grany po północy (00:00-05:00 UTC)
-  const lateNightHit = myAllPreds.find(p => {
-    if (!p.matches?.kickoff_at) return false
-    const h = new Date(p.matches.kickoff_at).getUTCHours()
-    return (h >= 0 && h < 5) && (p.points_earned > 0 || p.pts_advancement > 0)
-  })
-  if (lateNightHit) badges.push({ icon: '🍕', label: 'Kebab o 3 w nocy', desc: 'Trafił mecz grany w środku nocy' })
+  // 🎲 Ruletka — trafił awans typując remis po 90 min (czyli szedł na dogrywkę i karne)
+  const roulette = knockoutPreds.find(p =>
+    p.pred_home !== null && p.pred_away !== null &&
+    p.pred_home === p.pred_away &&
+    p.pts_advancement > 0
+  )
+  if (roulette) badges.push({ icon: '🎲', label: 'Ruletka', desc: 'Trafił awans typując remis po 90 min' })
 
   // 🕵️ Agent Karingtony — wytypował wszystkie mecze fazy pucharowej
   const totalKnockout = new Set(knockoutPreds.map(p => p.match_id)).size
