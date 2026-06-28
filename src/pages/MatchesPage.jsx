@@ -133,7 +133,6 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
 
   const [home, setHome] = useState(prediction?.pred_home ?? '')
   const [away, setAway] = useState(prediction?.pred_away ?? '')
-  const [extraTime, setExtraTime] = useState(prediction?.pred_extra_time ?? false)
   const [penalty, setPenalty] = useState(prediction?.pred_penalty ?? false)
   const [winner, setWinner] = useState(prediction?.pred_winner ?? '')
   const [saving, setSaving] = useState(false)
@@ -141,6 +140,22 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
 
   const showKnockoutOptions = isKnockout && isOpen
   const showDrawOptions = isKnockout && isOpen && home !== '' && away !== '' && parseInt(home) === parseInt(away)
+
+  // Auto-ustaw awansującego i dogrywkę na podstawie wyniku
+  useEffect(() => {
+    if (!isKnockout || !isOpen || home === '' || away === '') return
+    const h = parseInt(home), a = parseInt(away)
+    if (isNaN(h) || isNaN(a)) return
+    if (h > a) {
+      setWinner(match.home_team)
+      setExtraTime(false)
+      setPenalty(false)
+    } else if (a > h) {
+      setWinner(match.away_team)
+      setExtraTime(false)
+      setPenalty(false)
+    }
+  }, [home, away])
 
   async function savePrediction() {
     if (!playerId || home === '' || away === '') return
@@ -299,7 +314,7 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
           </div>
           {!showDrawOptions && (
             <div style={{ fontSize: 11, color: theme.text3, marginTop: 6 }}>
-              Wpisz remis żeby odblokować opcje dogrywki i karnych
+              Wpisz remis żeby odblokować opcję karnych
             </div>
           )}
         </div>
