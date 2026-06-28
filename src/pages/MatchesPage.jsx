@@ -138,6 +138,7 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
+  const extraTime = showDrawOptions  // przy remisie zawsze jest dogrywka
   const showKnockoutOptions = isKnockout && isOpen
   const showDrawOptions = isKnockout && isOpen && home !== '' && away !== '' && parseInt(home) === parseInt(away)
 
