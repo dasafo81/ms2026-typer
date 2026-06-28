@@ -1,9 +1,11 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { usePlayer } from '../hooks/usePlayer'
+import { useTheme } from '../hooks/useTheme'
 import { useEffect } from 'react'
 
 export default function Layout() {
   const { player, loading, logout } = usePlayer()
+  const { theme, knockout } = useTheme()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -16,10 +18,10 @@ export default function Layout() {
   const initials = player.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: theme.bg }}>
       <header style={{
-        background: '#0d0d0d',
-        borderBottom: '2px solid #b8952a',
+        background: theme.headerBg,
+        borderBottom: `2px solid ${theme.headerBorder}`,
         position: 'sticky', top: 0, zIndex: 100
       }}>
         <div style={{
@@ -30,11 +32,12 @@ export default function Layout() {
             <img src="/logo.svg" alt="Karingtony 2026" style={{ height: 44, width: 'auto' }} />
           </div>
 
-          <nav style={{ display: 'flex', gap: 4, flex: 1 }}>
+          <nav style={{ display: 'flex', gap: 4, flex: 1, flexWrap: 'wrap' }}>
             {[
               { to: '/', label: '🏆 Ranking' },
               { to: '/mecze', label: '📅 Mecze' },
               { to: '/moje-typy', label: '✏️ Moje typy' },
+              ...(knockout ? [{ to: '/drabinka', label: '🪜 Drabinka' }] : []),
             ].map(({ to, label }) => (
               <NavLink
                 key={to}
@@ -45,9 +48,9 @@ export default function Layout() {
                   borderRadius: 8,
                   fontSize: 13,
                   fontWeight: 500,
-                  color: isActive ? '#f5d87a' : '#9a8a6a',
-                  background: isActive ? '#b8952a22' : 'transparent',
-                  border: isActive ? '1px solid #b8952a44' : '1px solid transparent',
+                  color: isActive ? theme.accent3 : theme.text3,
+                  background: isActive ? `${theme.accent}22` : 'transparent',
+                  border: isActive ? `1px solid ${theme.accent}44` : '1px solid transparent',
                   transition: 'all 0.15s',
                   whiteSpace: 'nowrap'
                 })}
@@ -61,8 +64,8 @@ export default function Layout() {
             {player.is_admin && (
               <NavLink to="/admin" style={({ isActive }) => ({
                 padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                color: isActive ? '#f5d87a' : '#b8952a',
-                background: isActive ? '#b8952a22' : 'transparent',
+                color: isActive ? theme.accent3 : theme.accent,
+                background: isActive ? `${theme.accent}22` : 'transparent',
               })}>
                 ⚙️ Admin
               </NavLink>
@@ -71,18 +74,18 @@ export default function Layout() {
               <div style={{
                 width: 34, height: 34, borderRadius: '50%',
                 background: player.avatar_color,
-                border: '2px solid #b8952a',
+                border: `2px solid ${theme.accent}`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 12, fontWeight: 700, color: '#fff'
               }}>{initials}</div>
-              <span style={{ fontSize: 13, fontWeight: 500, color: '#c9a84c' }}>{player.name}</span>
+              <span style={{ fontSize: 13, fontWeight: 500, color: theme.accent2 }}>{player.name}</span>
             </div>
             <button
               onClick={logout}
               style={{
-                background: 'transparent', border: '1px solid #b8952a44',
+                background: 'transparent', border: `1px solid ${theme.accent}44`,
                 borderRadius: 6, padding: '5px 10px', fontSize: 12,
-                color: '#9a8a6a', cursor: 'pointer'
+                color: theme.text3, cursor: 'pointer'
               }}
             >
               Wyloguj
@@ -96,12 +99,12 @@ export default function Layout() {
       </main>
 
       <footer style={{
-        background: '#0d0d0d',
-        borderTop: '1px solid #b8952a44',
+        background: theme.headerBg,
+        borderTop: `1px solid ${theme.accent}44`,
         padding: '14px 16px',
         textAlign: 'center',
         fontSize: 12,
-        color: '#5a4a2a',
+        color: theme.text3,
         letterSpacing: 1,
         fontFamily: 'Georgia, serif'
       }}>
