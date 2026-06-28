@@ -10,15 +10,15 @@
   --green: #4caf7d;
   --green-dim: #4caf7d15;
   --blue-dim: #3a6bc015;
-  --bg: #6b9ed4;
-  --bg2: #3a5a8a;
-  --bg3: #2d4a7a;
-  --bg4: #253d6a;
-  --border: #c9a84c33;
-  --border2: #c9a84c66;
-  --text: #ffffff;
-  --text2: #c8d8f0;
-  --text3: #90a8cc;
+  --bg: #ddeeff;
+  --bg2: #eef6ff;
+  --bg3: #cce0f5;
+  --bg4: #bbcfe8;
+  --border: #b8952a40;
+  --border2: #b8952a60;
+  --text: #0d1e35;
+  --text2: #2a4a70;
+  --text3: #6a8aaa;
   --radius: 12px;
   --radius-sm: 8px;
 }
