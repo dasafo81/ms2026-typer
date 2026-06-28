@@ -22,12 +22,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#243562', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+    <div style={{ minHeight: '100vh', background: '#4d7eb4', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div style={{ width: '100%', maxWidth: 420 }}>
         <div style={{ textAlign: 'center', marginBottom: 36 }}>
           <img src="/logo.svg" alt="Karingtony 2026" style={{ width: '100%', maxWidth: 380, height: 'auto' }} />
         </div>
-        <div style={{ background: '#243562', borderRadius: 12, border: '1px solid #c9a84c33', padding: 32 }}>
+        <div style={{ background: '#4d7eb4', borderRadius: 12, border: '1px solid #c9a84c33', padding: 32 }}>
           <div style={{ textAlign: 'center', marginBottom: 24, paddingBottom: 20, borderBottom: '1px solid #c9a84c22' }}>
             <div style={{ fontSize: 11, letterSpacing: 3, color: '#c9a84c', fontFamily: 'Georgia, serif', textTransform: 'uppercase', marginBottom: 6 }}>Dołącz do ligi</div>
           </div>
