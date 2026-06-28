@@ -1,38 +1,18 @@
-export function isKnockoutPhase() {
-  return false
-}
+export function isKnockoutPhase() { return false }
 
 export const THEME = {
   group: {
-    bg: '#f7f4ef',
-    bg2: '#ffffff',
-    bg3: '#f0ece3',
-    bg4: '#e8e2d6',
-    border: '#e8e0d0',
-    border2: '#b8952a40',
-    text: '#1a1208',
-    text2: '#5a4a2a',
-    text3: '#9a8a6a',
-    accent: '#b8952a',
-    accent2: '#c9a84c',
-    accent3: '#f5d87a',
-    headerBg: '#0d0d0d',
-    headerBorder: '#b8952a',
+    bg: '#1e2d50', bg2: '#243060', bg3: '#1a2540', bg4: '#162038',
+    border: '#c9a84c22', border2: '#c9a84c44',
+    text: '#e8ecf4', text2: '#8899bb', text3: '#4a5a7a',
+    accent: '#c9a84c', accent2: '#e8c96a', accent3: '#f5d87a',
+    headerBg: '#131d38', headerBorder: '#c9a84c',
   },
   knockout: {
-    bg: '#f7f4ef',
-    bg2: '#ffffff',
-    bg3: '#f0ece3',
-    bg4: '#e8e2d6',
-    border: '#e8e0d0',
-    border2: '#b8952a40',
-    text: '#1a1208',
-    text2: '#5a4a2a',
-    text3: '#9a8a6a',
-    accent: '#b8952a',
-    accent2: '#c9a84c',
-    accent3: '#f5d87a',
-    headerBg: '#0d0d0d',
-    headerBorder: '#b8952a',
+    bg: '#1e2d50', bg2: '#243060', bg3: '#1a2540', bg4: '#162038',
+    border: '#c9a84c22', border2: '#c9a84c44',
+    text: '#e8ecf4', text2: '#8899bb', text3: '#4a5a7a',
+    accent: '#c9a84c', accent2: '#e8c96a', accent3: '#f5d87a',
+    headerBg: '#131d38', headerBorder: '#c9a84c',
   }
 }
