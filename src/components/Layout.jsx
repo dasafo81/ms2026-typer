@@ -37,7 +37,7 @@ export default function Layout() {
               { to: '/', label: '🏆 Ranking' },
               { to: '/mecze', label: '📅 Mecze' },
               { to: '/moje-typy', label: '✏️ Moje typy' },
-              ...(knockout ? [{ to: '/drabinka', label: '🪜 Drabinka' }] : []),
+              { to: '/drabinka', label: '🪜 Drabinka' },
             ].map(({ to, label }) => (
               <NavLink
                 key={to}
