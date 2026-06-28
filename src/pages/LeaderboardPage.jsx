@@ -1,55 +1,108 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { usePlayer } from '../hooks/usePlayer'
+import { useTheme } from '../hooks/useTheme'
 
-// Odznaki za osiągnięcia
 function computeBadges(playerName, allPreds, rows, isBlackSeriesChamp = false, blackSeriesCount = 0) {
   const badges = []
-  const myPreds = allPreds
-    .filter(p => p.players?.name === playerName)
-    .sort((a, b) => new Date(a.matches?.kickoff_at) - new Date(b.matches?.kickoff_at))
-
-  // Hat-trick złoty — 3 dokładne z rzędu, zlicz ile razy
+  const myPreds = allPreds.filter(p => p.players?.name === playerName).sort((a, b) => new Date(a.matches?.kickoff_at) - new Date(b.matches?.kickoff_at))
   let exactStreak = 0, goldCount = 0
-  for (const p of myPreds) {
-    if (p.points_earned === 3) {
-      exactStreak++
-      if (exactStreak % 3 === 0) goldCount++
-    } else exactStreak = 0
-  }
+  for (const p of myPreds) { if (p.points_earned === 3) { exactStreak++; if (exactStreak % 3 === 0) goldCount++ } else exactStreak = 0 }
   if (goldCount > 0) badges.push({ icon: '🎩', label: 'Hat-trick złoty', desc: '3 dokładne wyniki z rzędu', count: goldCount })
-
-  // Hat-trick srebrny — 3 trafione z rzędu (1 lub 3 pkt), zlicz ile razy
   let hitStreak = 0, silverCount = 0
-  for (const p of myPreds) {
-    if ((p.points_earned || 0) > 0) {
-      hitStreak++
-      if (hitStreak % 3 === 0) silverCount++
-    } else hitStreak = 0
-  }
+  for (const p of myPreds) { if ((p.points_earned || 0) > 0) { hitStreak++; if (hitStreak % 3 === 0) silverCount++ } else hitStreak = 0 }
   if (silverCount > 0 && goldCount === 0) badges.push({ icon: '🎪', label: 'Hat-trick srebrny', desc: '3 trafione wyniki z rzędu', count: silverCount })
-
-  // Żelazny typer — wytypował wszystkie rozegrane mecze
   const finishedCount = allPreds.filter(p => p.players?.name === playerName).length
   const row = rows.find(r => r.name === playerName)
-  const totalFinished = allPreds.filter((p, i, arr) =>
-    arr.findIndex(x => x.match_id === p.match_id) === i
-  ).length
+  const totalFinished = allPreds.filter((p, i, arr) => arr.findIndex(x => x.match_id === p.match_id) === i).length
   if (finishedCount > 0 && finishedCount === totalFinished) badges.push({ icon: '🦾', label: 'Żelazny typer', desc: 'Wytypował każdy mecz' })
-
-  // Snajper — 50%+ dokładnych (min 4 rozegrane)
-  if (finishedCount >= 4 && Number(row?.exact_hits) / finishedCount >= 0.5)
-    badges.push({ icon: '🎯', label: 'Snajper', desc: '50%+ dokładnych wyników' })
-
-  // Szczęściarz — trafił wynik z różnicą 3+ goli
-  const bigUpset = myPreds.find(p =>
-    p.points_earned === 3 &&
-    Math.abs((p.matches?.home_score || 0) - (p.matches?.away_score || 0)) >= 3
-  )
+  if (finishedCount >= 4 && Number(row?.exact_hits) / finishedCount >= 0.5) badges.push({ icon: '🎯', label: 'Snajper', desc: '50%+ dokładnych wyników' })
+  if (isBlackSeriesChamp && blackSeriesCount >= 5) badges.push({ icon: '💀', label: 'Czarna seria', desc: `Rekord: ${blackSeriesCount} pudeł z rzędu` })
+  const bigUpset = myPreds.find(p => p.points_earned === 3 && Math.abs((p.matches?.home_score || 0) - (p.matches?.away_score || 0)) >= 3)
   if (bigUpset) badges.push({ icon: '🍀', label: 'Szczęściarz', desc: 'Trafił wynik z 3+ goli różnicy' })
 
-  if (isBlackSeriesChamp && blackSeriesCount >= 5)
-    badges.push({ icon: '💀', label: 'Czarna seria', desc: `Rekord: ${blackSeriesCount} pudeł z rzędu` })
+  // === ODZNAKI PUCHAROWE ===
+  const knockoutPreds = allPreds.filter(p => p.matches?.stage && p.matches.stage !== 'group' && p.players?.name === playerName)
+  const groupPreds = allPreds.filter(p => p.matches?.stage === 'group' && p.players?.name === playerName)
+  const myAllPreds = allPreds.filter(p => p.players?.name === playerName).sort((a,b) => new Date(a.matches?.kickoff_at) - new Date(b.matches?.kickoff_at))
+
+  // 🎯 Snajper pucharowy — 3+ dokładnych w fazie pucharowej
+  const kExact = knockoutPreds.filter(p => p.points_earned === 3).length
+  if (kExact >= 3) badges.push({ icon: '🎯', label: 'Snajper pucharowy', desc: `${kExact}× dokładny wynik w fazie pucharowej` })
+
+  // 🦅 Orzeł — trafił wszystkie awanse w jednej rundzie (min 4 mecze w rundzie)
+  const advByStage = {}
+  for (const p of knockoutPreds) {
+    const s = p.matches?.stage
+    if (!advByStage[s]) advByStage[s] = { hit: 0, total: 0 }
+    if (p.pred_winner) { advByStage[s].total++; if (p.pts_advancement > 0) advByStage[s].hit++ }
+  }
+  const eagleRound = Object.values(advByStage).find(s => s.total >= 4 && s.hit === s.total)
+  if (eagleRound) badges.push({ icon: '🦅', label: 'Orzeł', desc: 'Trafił wszystkie awanse w jednej rundzie' })
+
+  // 💎 Diament — dokładny wynik w finale
+  const finalExact = knockoutPreds.find(p => p.matches?.stage === 'final' && p.points_earned === 3)
+  if (finalExact) badges.push({ icon: '💎', label: 'Diament', desc: 'Dokładny wynik w finale!' })
+
+  // 🐙 Paul — 5+ trafionych awansów z rzędu
+  let awansStreak = 0, maxAwans = 0
+  for (const p of knockoutPreds) {
+    if (p.pts_advancement > 0) { awansStreak++; maxAwans = Math.max(maxAwans, awansStreak) } else awansStreak = 0
+  }
+  if (maxAwans >= 5) badges.push({ icon: '🐙', label: 'Paul', desc: `${maxAwans} trafionych awansów z rzędu jak ośmiornica` })
+
+  // 🍕 Kebab o 3 w nocy — trafił mecz grany po północy (00:00-05:00 UTC)
+  const lateNightHit = myAllPreds.find(p => {
+    if (!p.matches?.kickoff_at) return false
+    const h = new Date(p.matches.kickoff_at).getUTCHours()
+    return (h >= 0 && h < 5) && (p.points_earned > 0 || p.pts_advancement > 0)
+  })
+  if (lateNightHit) badges.push({ icon: '🍕', label: 'Kebab o 3 w nocy', desc: 'Trafił mecz grany w środku nocy' })
+
+  // 🕵️ Agent Karingtony — wytypował wszystkie mecze fazy pucharowej
+  const totalKnockout = new Set(knockoutPreds.map(p => p.match_id)).size
+  const allKnockoutMatches = new Set(allPreds.filter(p => p.matches?.stage && p.matches.stage !== 'group').map(p => p.match_id)).size
+  if (totalKnockout > 0 && totalKnockout === allKnockoutMatches && allKnockoutMatches >= 4)
+    badges.push({ icon: '🕵️', label: 'Agent Karingtony', desc: 'Wytypował każdy mecz fazy pucharowej' })
+
+  // 🎪 Cyrkowiec — trafił karne I dogrywkę w tym samym meczu
+  const circus = knockoutPreds.find(p => p.pts_extra_time > 0 && p.pts_penalty > 0)
+  if (circus) badges.push({ icon: '🎪', label: 'Cyrkowiec', desc: 'Trafił dogrywkę i karne w jednym meczu!' })
+
+  // 🧊 Lodówka — nie trafił ani jednego awansu w fazie pucharowej (min 4 wytypowane)
+  const totalAdvPreds = knockoutPreds.filter(p => p.pred_winner && p.matches?.status === 'finished').length
+  const hitAdv = knockoutPreds.filter(p => p.pts_advancement > 0).length
+  if (totalAdvPreds >= 4 && hitAdv === 0) badges.push({ icon: '🧊', label: 'Lodówka', desc: 'Ani jednego trafionego awansu' })
+
+  // 💸 Hazardzista — typuje remis w fazie pucharowej (min 3 razy)
+  const drawBets = knockoutPreds.filter(p => p.pred_home !== null && p.pred_away !== null && p.pred_home === p.pred_away).length
+  if (drawBets >= 3) badges.push({ icon: '💸', label: 'Hazardzista', desc: `Typuje remisy w pucharze (${drawBets}×)` })
+
+  // 🐔 Kurczak — nigdy nie typuje remisu w fazie pucharowej (min 8 wytypowanych)
+  const knockoutTyped = knockoutPreds.filter(p => p.pred_home !== null && p.pred_away !== null).length
+  if (knockoutTyped >= 8 && drawBets === 0) badges.push({ icon: '🐔', label: 'Kurczak', desc: 'Boi się remisów w fazie pucharowej' })
+
+  // 🔮 Wróżbita — trafił dogrywkę
+  const hitET = knockoutPreds.filter(p => p.pts_extra_time > 0).length
+  if (hitET >= 1) badges.push({ icon: '🔮', label: 'Wróżbita', desc: `${hitET}× trafiona dogrywka`, count: hitET > 1 ? hitET : 0 })
+
+  // 🥊 Karniarz — trafił karne
+  const hitPen = knockoutPreds.filter(p => p.pts_penalty > 0).length
+  if (hitPen >= 1) badges.push({ icon: '🥊', label: 'Karniarz', desc: `${hitPen}× trafione karne`, count: hitPen > 1 ? hitPen : 0 })
+
+  // 🔥 Ninja — 3 mecze z rzędu bez pudła (wszystkie fazy)
+  let ninjaStreak = 0, maxNinja = 0
+  for (const p of myAllPreds) {
+    const totalPts = (p.points_earned||0)+(p.pts_advancement||0)+(p.pts_extra_time||0)+(p.pts_penalty||0)
+    if (totalPts > 0) { ninjaStreak++; maxNinja = Math.max(maxNinja, ninjaStreak) } else ninjaStreak = 0
+  }
+  if (maxNinja >= 3) badges.push({ icon: '🔥', label: 'Ninja', desc: `${maxNinja} meczów z rzędu bez pudła` })
+
+  // 👻 Duch — nie wytypował ani jednego meczu pucharowego
+  if (allKnockoutMatches >= 4 && totalKnockout === 0) badges.push({ icon: '👻', label: 'Duch', desc: 'Zniknął w fazie pucharowej' })
+
+  // 👑 Król pucharu — 3+ dokładnych w fazie pucharowej
+  if (kExact >= 3) {} // już mamy Snajpera pucharowego — nie duplikuj
 
   return badges
 }
@@ -61,32 +114,26 @@ export default function LeaderboardPage() {
   const [expanded, setExpanded] = useState(null)
   const [loading, setLoading] = useState(true)
   const { player } = usePlayer()
+  const { theme, knockout } = useTheme()
 
   useEffect(() => {
     load()
-    const sub = supabase
-      .channel('leaderboard')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'predictions' }, load)
-      .subscribe()
+    const sub = supabase.channel('leaderboard').on('postgres_changes', { event: '*', schema: 'public', table: 'predictions' }, load).subscribe()
     return () => sub.unsubscribe()
   }, [])
 
   async function load() {
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-
     const [{ data: leaderboard }, { data: recentMatches }, { data: allPredictions }] = await Promise.all([
       supabase.from('leaderboard').select('*'),
       supabase.from('matches').select('id').eq('status', 'finished').gte('kickoff_at', since24h),
-      supabase.from('predictions').select('*, players(name), matches(kickoff_at, status, home_score, away_score)'),
+      supabase.from('predictions').select('*, players(name), matches(kickoff_at, status, home_score, away_score)')
     ])
-
     const allRows = leaderboard || []
     setRows(allRows)
     const recentMatchIds = new Set((recentMatches || []).map(m => m.id))
     const preds = (allPredictions || []).filter(p => p.matches?.status === 'finished' && p.players)
     setAllPreds(preds)
-
-    // 🔥 W gazie
     const recentPts = {}
     for (const p of preds) {
       if (recentMatchIds.has(p.match_id)) {
@@ -94,84 +141,53 @@ export default function LeaderboardPage() {
         recentPts[name] = (recentPts[name] || 0) + (p.points_earned || 0)
       }
     }
-    const onFireEntry = Object.entries(recentPts)
-      .sort((a, b) => {
-        if (b[1] !== a[1]) return b[1] - a[1]
-        const aTotal = allRows.find(r => r.name === a[0])?.total_points || 0
-        const bTotal = allRows.find(r => r.name === b[0])?.total_points || 0
-        return bTotal - aTotal
-      })[0]
+    const onFireEntry = Object.entries(recentPts).sort((a, b) => { if (b[1] !== a[1]) return b[1] - a[1]; const aT = allRows.find(r => r.name === a[0])?.total_points || 0; const bT = allRows.find(r => r.name === b[0])?.total_points || 0; return bT - aT })[0]
     const onFire = onFireEntry && onFireEntry[1] > 0 ? { name: onFireEntry[0], pts: onFireEntry[1] } : null
-
-    // 🎯 Snajper — tylko spośród żelaznych typerów (wytypowali wszystkie rozegrane mecze)
     const finishedPerPlayer = {}
-    for (const p of preds) {
-      const name = p.players.name
-      finishedPerPlayer[name] = (finishedPerPlayer[name] || 0) + 1
-    }
+    for (const p of preds) { const name = p.players.name; finishedPerPlayer[name] = (finishedPerPlayer[name] || 0) + 1 }
     const totalFinishedMatches = new Set(preds.map(p => p.match_id)).size
-    const sniperData = allRows
-      .filter(r => (finishedPerPlayer[r.name] || 0) === totalFinishedMatches && totalFinishedMatches >= 3)
-      .map(r => ({
-        name: r.name,
-        pct: Math.round((Number(r.exact_hits) / finishedPerPlayer[r.name]) * 100)
-      }))
-      .sort((a, b) => b.pct - a.pct)
+    const sniperData = allRows.filter(r => (finishedPerPlayer[r.name] || 0) === totalFinishedMatches && totalFinishedMatches >= 3).map(r => ({ name: r.name, pct: Math.round((Number(r.exact_hits) / finishedPerPlayer[r.name]) * 100) })).sort((a, b) => b.pct - a.pct)
     const sniper = sniperData[0]?.pct > 0 ? sniperData[0] : null
-
-    // 😬 Pechowiec
     const streaks = {}
     for (const row of allRows) {
-      const playerPreds = preds
-        .filter(p => p.players.name === row.name)
-        .sort((a, b) => new Date(a.matches.kickoff_at) - new Date(b.matches.kickoff_at))
-      // Liczymy AKTUALNĄ serię pudeł od końca
-      let currentStreak = 0
-      for (let i = playerPreds.length - 1; i >= 0; i--) {
-        if ((playerPreds[i].points_earned || 0) === 0) currentStreak++
-        else break
-      }
-      streaks[row.name] = currentStreak
+      const playerPreds = preds.filter(p => p.players.name === row.name).sort((a, b) => new Date(a.matches.kickoff_at) - new Date(b.matches.kickoff_at))
+      let streak = 0
+      for (let i = playerPreds.length - 1; i >= 0; i--) { if ((playerPreds[i].points_earned || 0) === 0) streak++; else break }
+      streaks[row.name] = streak
     }
     const unluckyEntry = Object.entries(streaks).sort((a, b) => b[1] - a[1])[0]
     const unlucky = unluckyEntry && unluckyEntry[1] >= 2 ? { name: unluckyEntry[0], streak: unluckyEntry[1] } : null
-
     setStats({ onFire, sniper, unlucky })
     setLoading(false)
   }
 
   const medals = ['🥇', '🥈', '🥉']
-
   const missStreaks = rows.map(r => {
-    const rPreds = allPreds
-      .filter(p => p.players?.name === r.name)
-      .sort((a, b) => new Date(a.matches?.kickoff_at) - new Date(b.matches?.kickoff_at))
+    const rPreds = allPreds.filter(p => p.players?.name === r.name).sort((a, b) => new Date(a.matches?.kickoff_at) - new Date(b.matches?.kickoff_at))
     let maxMiss = 0, cur = 0
-    for (const p of rPreds) {
-      if ((p.points_earned || 0) === 0) { cur++; maxMiss = Math.max(maxMiss, cur) }
-      else cur = 0
-    }
+    for (const p of rPreds) { if ((p.points_earned || 0) === 0) { cur++; maxMiss = Math.max(maxMiss, cur) } else cur = 0 }
     return { name: r.name, max: maxMiss }
   })
   const topMiss = [...missStreaks].sort((a, b) => b.max - a.max)[0]
 
+  const t = theme
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 4 }}>🏆 Tabela rankingowa</h1>
-        <p style={{ color: 'var(--text2)', fontSize: 14 }}>Aktualizuje się w czasie rzeczywistym</p>
+        <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 4, color: t.text }}>🏆 Tabela rankingowa</h1>
+        <p style={{ color: t.text2, fontSize: 14 }}>Aktualizuje się w czasie rzeczywistym</p>
       </div>
 
-      {/* Odznaki tygodnia */}
       {!loading && (stats.onFire || stats.sniper || stats.unlucky) && (
         <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-          {stats.onFire && <Badge icon="🔥" title="W gazie" name={stats.onFire.name} sub={`+${stats.onFire.pts} pkt w ostatnich 24h`} color="#b8952a" bg="#b8952a12" />}
+          {stats.onFire && <Badge icon="🔥" title="W gazie" name={stats.onFire.name} sub={`+${stats.onFire.pts} pkt w ostatnich 24h`} color={t.accent} bg={`${t.accent}12`} />}
           {stats.sniper && <Badge icon="🏹" title="Snajper" name={stats.sniper.name} sub={`${stats.sniper.pct}% dokładnych wyników`} color="#1a7a4a" bg="#1a7a4a12" />}
           {stats.unlucky && <Badge icon="😭" title="Pechowiec" name={stats.unlucky.name} sub={`${stats.unlucky.streak} pudła z rzędu`} color="#c0392b" bg="#c0392b12" />}
         </div>
       )}
 
-      {loading ? <Skeleton /> : rows.length === 0 ? <Empty /> : (
+      {loading ? <Skeleton t={t} /> : rows.length === 0 ? <Empty t={t} /> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {rows.map((row, i) => {
             const isMe = row.id === player?.id
@@ -182,133 +198,77 @@ export default function LeaderboardPage() {
             const isBlackChamp = topMiss && topMiss.name === row.name && topMiss.max >= 5
             const badges = computeBadges(row.name, allPreds, rows, isBlackChamp, topMiss?.max || 0)
             const isExpanded = expanded === row.id
-
-            // Forma tygodnia — ostatnie 7 rozegranych typów
-            const myRecent = allPreds
-              .filter(p => p.players?.name === row.name)
-              .sort((a, b) => new Date(b.matches?.kickoff_at) - new Date(a.matches?.kickoff_at))
-              .slice(0, 7)
-              .reverse()
+            const myRecent = allPreds.filter(p => p.players?.name === row.name).sort((a, b) => new Date(b.matches?.kickoff_at) - new Date(a.matches?.kickoff_at)).slice(0, 7).reverse()
 
             return (
               <div key={row.id}>
-                <div
-                  className="card"
-                  onClick={() => setExpanded(isExpanded ? null : row.id)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 14,
-                    padding: '14px 18px',
-                    border: isMe ? '1px solid var(--gold)' : '1px solid #e8e0d0',
-                    background: isMe ? '#b8952a08' : 'var(--bg2)',
-                    cursor: 'pointer', transition: 'all 0.15s',
-                    borderBottomLeftRadius: isExpanded ? 0 : undefined,
-                    borderBottomRightRadius: isExpanded ? 0 : undefined,
-                  }}
-                >
-                  <div style={{ width: 32, textAlign: 'center', fontSize: medal || isLast ? 20 : 14, fontWeight: 700, color: medal ? undefined : isLast ? undefined : 'var(--text3)', fontFamily: 'Space Grotesk' }}>
+                <div onClick={() => setExpanded(isExpanded ? null : row.id)} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', background: isMe ? `${t.accent}08` : t.bg2, border: isMe ? `1px solid ${t.accent}` : `1px solid ${t.border || '#e8e0d0'}`, borderRadius: isExpanded ? '12px 12px 0 0' : 12, cursor: 'pointer', transition: 'all 0.15s' }}>
+                  <div style={{ width: 32, textAlign: 'center', fontSize: medal || isLast ? 20 : 14, fontWeight: 700, color: medal ? undefined : isLast ? undefined : t.text3, fontFamily: 'Space Grotesk' }}>
                     {medal || (isLast ? '🔴' : i + 1)}
                   </div>
                   <div style={{ width: 40, height: 40, borderRadius: '50%', background: row.avatar_color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
                     {row.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 15, color: isMe ? 'var(--gold)' : 'var(--text)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <div style={{ fontWeight: 600, fontSize: 15, color: isMe ? t.accent : t.text, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                       {row.name}
-                      {isMe && <span style={{ fontSize: 11, color: 'var(--gold2)', fontWeight: 400 }}>(ty)</span>}
+                      {isMe && <span style={{ fontSize: 11, color: t.accent2, fontWeight: 400 }}>(ty)</span>}
                       {stats.onFire?.name === row.name && <span title="W gazie">🔥</span>}
                       {stats.sniper?.name === row.name && <span title="Snajper">🏹</span>}
                       {stats.unlucky?.name === row.name && <span title="Pechowiec">😭</span>}
                       {badges.map(b => <span key={b.label} title={b.desc}>{b.icon}</span>)}
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
-                      {row.predictions_count} typów · {finishedCount} rozegranych
-                      {Number(row.exact_hits) > 0 && ` · ${row.exact_hits}× dokładny`}
-                      {exactPct > 0 && ` · ${exactPct}% celność`}
+                    <div style={{ fontSize: 12, color: t.text2, marginTop: 2 }}>
+                      {row.predictions_count} typów · {finishedCount} rozegranych{Number(row.exact_hits) > 0 && ` · ${row.exact_hits}× dokładny`}{exactPct > 0 && ` · ${exactPct}% celność`}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     <div style={{ textAlign: 'center', minWidth: 36 }}>
                       <div style={{ fontSize: 15, fontWeight: 700, color: '#1a7a4a', fontFamily: 'Space Grotesk' }}>{row.exact_hits}</div>
-                      <div style={{ fontSize: 9, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>cel</div>
+                      <div style={{ fontSize: 9, color: t.text3, textTransform: 'uppercase', letterSpacing: 0.5 }}>cel</div>
                     </div>
                     <div style={{ textAlign: 'center', minWidth: 36 }}>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--gold)', fontFamily: 'Space Grotesk' }}>{row.result_hits}</div>
-                      <div style={{ fontSize: 9, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>1X2</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: t.accent, fontFamily: 'Space Grotesk' }}>{row.result_hits}</div>
+                      <div style={{ fontSize: 9, color: t.text3, textTransform: 'uppercase', letterSpacing: 0.5 }}>1X2</div>
                     </div>
-                    <div style={{ background: isMe ? '#b8952a18' : 'var(--bg3)', borderRadius: 10, padding: '6px 14px', textAlign: 'center', minWidth: 64, border: isMe ? '1px solid #b8952a44' : 'none' }}>
-                      <div style={{ fontSize: 22, fontWeight: 800, fontFamily: 'Space Grotesk', color: isMe ? 'var(--gold)' : 'var(--text)' }}>{row.total_points}</div>
-                      <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 1 }}>pkt</div>
+                    <div style={{ background: isMe ? `${t.accent}18` : t.bg3, borderRadius: 10, padding: '6px 14px', textAlign: 'center', minWidth: 64, border: isMe ? `1px solid ${t.accent}44` : 'none' }}>
+                      <div style={{ fontSize: 22, fontWeight: 800, fontFamily: 'Space Grotesk', color: isMe ? t.accent : t.text }}>{row.total_points}</div>
+                      <div style={{ fontSize: 10, color: t.text3, marginTop: 1 }}>pkt</div>
                     </div>
                   </div>
                 </div>
-
-                {/* Rozwinięcie — forma tygodnia + odznaki */}
                 {isExpanded && (
-                  <div style={{
-                    background: '#faf8f4', border: '1px solid #e8e0d0',
-                    borderTop: 'none', borderRadius: '0 0 12px 12px',
-                    padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 12
-                  }}>
-                    {/* Forma tygodnia */}
+                  <div style={{ background: t.bg3, border: `1px solid ${t.border || '#e8e0d0'}`, borderTop: 'none', borderRadius: '0 0 12px 12px', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {myRecent.length > 0 && (
                       <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
-                          Forma — ostatnie {myRecent.length} rozegranych
-                        </div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Forma — ostatnie {myRecent.length} rozegranych</div>
                         <div style={{ display: 'flex', gap: 6 }}>
                           {myRecent.map((p, idx) => (
-                            <div key={idx} title={`${p.pred_home}:${p.pred_away}`} style={{
-                              width: 32, height: 32, borderRadius: 8,
-                              background: p.points_earned === 3 ? '#1a7a4a' : p.points_earned === 1 ? '#b8952a' : '#e8e0d0',
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: 13, fontWeight: 700,
-                              color: p.points_earned > 0 ? '#fff' : 'var(--text3)'
-                            }}>
+                            <div key={idx} title={`${p.pred_home}:${p.pred_away}`} style={{ width: 32, height: 32, borderRadius: 8, background: p.points_earned === 3 ? '#1a7a4a' : p.points_earned === 1 ? t.accent : t.bg4, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: p.points_earned > 0 ? '#fff' : t.text3 }}>
                               {p.points_earned === 3 ? '🎯' : p.points_earned === 1 ? '✓' : '✗'}
                             </div>
                           ))}
                         </div>
-                        <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 6 }}>
-                          🟢 dokładny · 🟡 wynik · ⬜ pudło
-                        </div>
                       </div>
                     )}
-
-                    {/* Odznaki */}
                     {badges.length > 0 && (
                       <div>
-                        <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
-                          Odznaki
-                        </div>
+                        <div style={{ fontSize: 11, fontWeight: 700, color: t.text3, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>Odznaki</div>
                         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                           {badges.map(b => (
-                            <div key={b.label} style={{
-                              display: 'flex', alignItems: 'center', gap: 6,
-                              background: '#fff', border: '1px solid #e8e0d0',
-                              borderRadius: 8, padding: '6px 12px', fontSize: 13
-                            }}>
+                            <div key={b.label} style={{ display: 'flex', alignItems: 'center', gap: 6, background: t.bg2, border: `1px solid ${t.border || '#e8e0d0'}`, borderRadius: 8, padding: '6px 12px', fontSize: 13 }}>
                               <span>{b.icon}</span>
                               <div>
-                                <div style={{ fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5 }}>
+                                <div style={{ fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', gap: 5, color: t.text }}>
                                   {b.label}
-                                  {b.count > 1 && (
-                                    <span style={{
-                                      background: '#b8952a', color: '#fff',
-                                      borderRadius: 10, padding: '1px 6px',
-                                      fontSize: 10, fontWeight: 800
-                                    }}>×{b.count}</span>
-                                  )}
+                                  {b.count > 1 && <span style={{ background: t.accent, color: knockout ? '#0f0e17' : '#fff', borderRadius: 10, padding: '1px 6px', fontSize: 10, fontWeight: 800 }}>×{b.count}</span>}
                                 </div>
-                                <div style={{ fontSize: 10, color: 'var(--text3)' }}>{b.desc}</div>
+                                <div style={{ fontSize: 10, color: t.text3 }}>{b.desc}</div>
                               </div>
                             </div>
                           ))}
                         </div>
                       </div>
-                    )}
-
-                    {badges.length === 0 && myRecent.length === 0 && (
-                      <div style={{ fontSize: 13, color: 'var(--text3)' }}>Brak danych — typuj więcej meczów!</div>
                     )}
                   </div>
                 )}
@@ -320,14 +280,10 @@ export default function LeaderboardPage() {
 
       {rows.length > 0 && (
         <div style={{ marginTop: 20, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          {[
-            { label: 'Graczy', value: rows.length },
-            { label: 'Typów łącznie', value: rows.reduce((s, r) => s + Number(r.predictions_count), 0) },
-            { label: 'Lider', value: rows[0]?.name || '–' },
-          ].map(s => (
-            <div key={s.label} className="card" style={{ flex: 1, minWidth: 120, padding: '12px 16px' }}>
-              <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 4 }}>{s.label}</div>
-              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Space Grotesk' }}>{s.value}</div>
+          {[{ label: 'Graczy', value: rows.length }, { label: 'Typów łącznie', value: rows.reduce((s, r) => s + Number(r.predictions_count), 0) }, { label: 'Lider', value: rows[0]?.name || '–' }].map(s => (
+            <div key={s.label} style={{ flex: 1, minWidth: 120, padding: '12px 16px', background: t.bg2, border: `1px solid ${t.border || '#e8e0d0'}`, borderRadius: 12 }}>
+              <div style={{ fontSize: 11, color: t.text2, marginBottom: 4 }}>{s.label}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Space Grotesk', color: t.text }}>{s.value}</div>
             </div>
           ))}
         </div>
@@ -342,29 +298,15 @@ function Badge({ icon, title, name, sub, color, bg }) {
       <div style={{ fontSize: 28, lineHeight: 1 }}>{icon}</div>
       <div>
         <div style={{ fontSize: 10, fontWeight: 700, color, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>{title}</div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>{name}</div>
-        <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>{sub}</div>
+        <div style={{ fontSize: 15, fontWeight: 700 }}>{name}</div>
+        <div style={{ fontSize: 11, color: '#888', marginTop: 1 }}>{sub}</div>
       </div>
     </div>
   )
 }
-
-function Skeleton() {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="card" style={{ height: 68, opacity: 0.3, background: 'var(--bg3)' }} />
-      ))}
-    </div>
-  )
+function Skeleton({ t }) {
+  return <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{[...Array(5)].map((_, i) => <div key={i} style={{ height: 68, opacity: 0.3, background: t.bg3, borderRadius: 12 }} />)}</div>
 }
-
-function Empty() {
-  return (
-    <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text2)' }}>
-      <div style={{ fontSize: 40, marginBottom: 12 }}>🏜️</div>
-      <div style={{ fontSize: 16, fontWeight: 600 }}>Ranking pusty</div>
-      <div style={{ fontSize: 13, marginTop: 6 }}>Zaproś znajomych i zacznijcie typować!</div>
-    </div>
-  )
+function Empty({ t }) {
+  return <div style={{ textAlign: 'center', padding: '60px 20px', color: t.text2 }}><div style={{ fontSize: 40, marginBottom: 12 }}>🏜️</div><div style={{ fontSize: 16, fontWeight: 600 }}>Ranking pusty</div></div>
 }
