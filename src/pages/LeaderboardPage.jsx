@@ -116,6 +116,14 @@ export default function LeaderboardPage() {
   const { player } = usePlayer()
   const { theme, knockout } = useTheme()
 
+  // Sprawdź czy jest faza pucharowa na podstawie danych
+  const [isKnockout, setIsKnockout] = useState(false)
+  useEffect(() => {
+    supabase.from('matches').select('stage, status').neq('stage', 'group').then(({ data }) => {
+      if (data && data.length > 0) setIsKnockout(true)
+    })
+  }, [])
+
   useEffect(() => {
     load()
     const sub = supabase.channel('leaderboard').on('postgres_changes', { event: '*', schema: 'public', table: 'predictions' }, load).subscribe()
@@ -174,6 +182,26 @@ export default function LeaderboardPage() {
 
   return (
     <div>
+      {isKnockout && (
+        <div style={{
+          marginBottom: 20, padding: '12px 18px',
+          background: `${t.accent}18`,
+          border: `1px solid ${t.accent}55`,
+          borderRadius: 12,
+          display: 'flex', alignItems: 'center', gap: 12
+        }}>
+          <span style={{ fontSize: 24 }}>🏆</span>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: t.accent, letterSpacing: 1, textTransform: 'uppercase' }}>
+              Faza pucharowa — Karingtony World Cup League 2026
+            </div>
+            <div style={{ fontSize: 12, color: t.text2, marginTop: 2 }}>
+              Dodatkowe punkty za awans (+2), dogrywkę (+1) i karne (+1)
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 4, color: t.text }}>🏆 Tabela rankingowa</h1>
         <p style={{ color: t.text2, fontSize: 14 }}>Aktualizuje się w czasie rzeczywistym</p>
