@@ -16,21 +16,26 @@ async function fetchMatches() {
 
 function mapMatch(match) {
   const round = match.stage || ''
-  const groupName = match.group || match.stage || ''
 
   let stage = 'group'
-  if (round === 'ROUND_OF_16') stage = 'r16'
+  if (round === 'LAST_32' || round === 'ROUND_OF_32') stage = 'r32'
+  else if (round === 'LAST_16' || round === 'ROUND_OF_16') stage = 'r16'
   else if (round === 'QUARTER_FINALS') stage = 'qf'
   else if (round === 'SEMI_FINALS') stage = 'sf'
+  else if (round === 'THIRD_PLACE' || round === 'THIRD_PLACE_FINAL') stage = 'third'
   else if (round === 'FINAL') stage = 'final'
 
   let status = 'scheduled'
   if (match.status === 'FINISHED') status = 'finished'
   else if (['IN_PLAY', 'PAUSED', 'LIVE'].includes(match.status)) status = 'live'
 
-  const groupLabel = groupName.startsWith('GROUP_')
-    ? 'Grupa ' + groupName.replace('GROUP_', '')
-    : groupName
+  // Tylko faza grupowa ma sensowny group_name; dla pucharu zostawiamy null,
+  // żeby etykietę wyznaczał stage (nigdy surowe 'LAST_32' z API).
+  let groupLabel = null
+  if (stage === 'group') {
+    const g = match.group || ''
+    groupLabel = g.startsWith('GROUP_') ? 'Grupa ' + g.replace('GROUP_', '') : (g || null)
+  }
 
   return {
     api_match_id: match.id,
