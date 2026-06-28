@@ -190,7 +190,7 @@ export default function LeaderboardPage() {
               Faza pucharowa — Karingtony World Cup League 2026
             </div>
             <div style={{ fontSize: 12, color: t.text2, marginTop: 2 }}>
-              Dodatkowe punkty za awans (+2), dogrywkę (+1) i karne (+1)
+              Dodatkowe punkty za awans (+2) i karne (+1)
             </div>
           </div>
         </div>
