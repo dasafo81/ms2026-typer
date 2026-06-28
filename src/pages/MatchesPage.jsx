@@ -7,14 +7,14 @@ import { pl } from 'date-fns/locale'
 
 const STAGE_LABELS = {
   group: 'Faza grupowa',
-  r16: '1/8 finału',
-  qf: '1/4 finału',
-  sf: 'Półfinał',
+  r16: '1/16 finału',
+  qf: '1/8 finału',
+  sf: '1/4 finału',
   final: 'Finał',
-  LAST_32: '1/32 finału',
-  ROUND_OF_16: '1/8 finału',
-  QUARTER_FINALS: '1/4 finału',
-  SEMI_FINALS: 'Półfinał',
+  LAST_32: '1/16 finału',
+  ROUND_OF_16: '1/16 finału',
+  QUARTER_FINALS: '1/8 finału',
+  SEMI_FINALS: '1/4 finału',
   FINAL: 'Finał'
 }
 
