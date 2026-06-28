@@ -139,6 +139,7 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
+  const showKnockoutOptions = isKnockout && isOpen
   const showDrawOptions = isKnockout && isOpen && home !== '' && away !== '' && parseInt(home) === parseInt(away)
 
   async function savePrediction() {
@@ -260,28 +261,16 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
       </div>
 
       {/* Opcje pucharowe — przy remisie po 90 min */}
-      {showDrawOptions && (
+      {showKnockoutOptions && (
         <div style={{
           marginTop: 12, padding: '10px 14px',
           background: theme.bg3, borderRadius: 8,
           border: `1px solid ${theme.accent}33`
         }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: theme.accent, letterSpacing: 1, marginBottom: 8, textTransform: 'uppercase' }}>
-            Remis po 90 min — opcje pucharowe
+            Opcje pucharowe
           </div>
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-            <label style={{ fontSize: 13, color: theme.text2, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-              <input type="checkbox" checked={extraTime} onChange={e => { setExtraTime(e.target.checked); if (!e.target.checked) setPenalty(false) }}
-                style={{ accentColor: theme.accent }} />
-              Dogrywka (+1 pkt)
-            </label>
-            {extraTime && (
-              <label style={{ fontSize: 13, color: theme.text2, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                <input type="checkbox" checked={penalty} onChange={e => setPenalty(e.target.checked)}
-                  style={{ accentColor: theme.accent }} />
-                Karne (+1 pkt)
-              </label>
-            )}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 13, color: theme.text2 }}>Awansuje (+2 pkt):</span>
               <select value={winner} onChange={e => setWinner(e.target.value)}
@@ -291,7 +280,28 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
                 <option value={match.away_team}>{match.away_team}</option>
               </select>
             </div>
+            {showDrawOptions && (
+              <>
+                <label style={{ fontSize: 13, color: theme.text2, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={extraTime} onChange={e => { setExtraTime(e.target.checked); if (!e.target.checked) setPenalty(false) }}
+                    style={{ accentColor: theme.accent }} />
+                  Dogrywka (+1 pkt)
+                </label>
+                {extraTime && (
+                  <label style={{ fontSize: 13, color: theme.text2, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={penalty} onChange={e => setPenalty(e.target.checked)}
+                      style={{ accentColor: theme.accent }} />
+                    Karne (+1 pkt)
+                  </label>
+                )}
+              </>
+            )}
           </div>
+          {!showDrawOptions && (
+            <div style={{ fontSize: 11, color: theme.text3, marginTop: 6 }}>
+              Wpisz remis żeby odblokować opcje dogrywki i karnych
+            </div>
+          )}
         </div>
       )}
 
