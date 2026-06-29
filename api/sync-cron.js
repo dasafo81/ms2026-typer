@@ -37,6 +37,13 @@ function mapMatch(match) {
     groupLabel = g.startsWith('GROUP_') ? 'Grupa ' + g.replace('GROUP_', '') : (g || null)
   }
 
+  // Zwycięzca pucharu z API — działa też dla karnych (score.winner = drużyna, która przeszła)
+  let winner = null
+  if (stage !== 'group') {
+    if (match.score?.winner === 'HOME_TEAM') winner = match.homeTeam?.name || null
+    else if (match.score?.winner === 'AWAY_TEAM') winner = match.awayTeam?.name || null
+  }
+
   return {
     api_match_id: match.id,
     home_team: match.homeTeam?.name || 'TBD',
@@ -47,7 +54,8 @@ function mapMatch(match) {
     stage,
     group_name: groupLabel,
     status,
-    venue: match.venue || null
+    venue: match.venue || null,
+    winner
   }
 }
 
