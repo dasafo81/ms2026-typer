@@ -38,7 +38,7 @@ export default function BracketPage() {
 
   async function load() {
     const [{ data: matchData }, { data: predData }] = await Promise.all([
-      supabase.from('matches').select('*').neq('stage', 'group').order('kickoff_at'),
+      supabase.from('matches').select('*').neq('stage', 'group').order('bracket_position', { nullsFirst: false }),
       player
         ? supabase.from('predictions').select('*').eq('player_id', player.id)
         : Promise.resolve({ data: [] })
