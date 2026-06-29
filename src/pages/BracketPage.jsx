@@ -13,9 +13,9 @@ const STAGE_LABELS = {
 }
 
 // Wymiary karty i kolumny
-const CARD_H = 68      // wysokość karty meczu (px)
-const CARD_W = 148     // szerokość karty
-const COL_GAP = 40     // odstęp między kolumnami (miejsce na linie)
+const CARD_H = 72      // wysokość karty meczu (px)
+const CARD_W = 168     // szerokość karty — wystarczy dla "South Africa"
+const COL_GAP = 36     // odstęp między kolumnami (miejsce na linie)
 const COL_W = CARD_W + COL_GAP
 
 // Dla każdej rundy: ile meczów i jaki pionowy odstęp między kartami
@@ -233,12 +233,12 @@ function BracketCard({ match, prediction, theme, isFinal }) {
       <div style={{
         height: CARD_H, background: theme.bg2,
         border: `1px solid ${theme.border}`,
-        borderRadius: 8, padding: '8px 10px',
-        opacity: 0.45, display: 'flex', flexDirection: 'column', justifyContent: 'center'
+        borderRadius: 8, overflow: 'hidden',
+        opacity: 0.45, boxSizing: 'border-box'
       }}>
-        <div style={{ fontSize: 11, color: theme.text3, fontStyle: 'italic' }}>TBD</div>
-        <div style={{ borderTop: `1px solid ${theme.border}`, margin: '6px 0' }} />
-        <div style={{ fontSize: 11, color: theme.text3, fontStyle: 'italic' }}>TBD</div>
+        <div style={{ padding: '10px 10px 6px', fontSize: 11, color: theme.text3, fontStyle: 'italic' }}>TBD</div>
+        <div style={{ borderTop: `1px solid ${theme.border}` }} />
+        <div style={{ padding: '6px 10px', fontSize: 11, color: theme.text3, fontStyle: 'italic' }}>TBD</div>
       </div>
     )
   }
@@ -248,50 +248,59 @@ function BracketCard({ match, prediction, theme, isFinal }) {
       height: CARD_H,
       background: theme.bg2,
       border: `1px solid ${isLive ? '#e24b4a' : isFinal ? theme.accent : theme.border}`,
-      borderRadius: 8, padding: '6px 10px',
+      borderRadius: 8,
       borderLeft: isFinal ? `3px solid ${theme.accent}` : undefined,
-      display: 'flex', flexDirection: 'column', justifyContent: 'center',
-      boxSizing: 'border-box'
+      overflow: 'hidden',
+      boxSizing: 'border-box',
+      position: 'relative'
     }}>
-      {/* punkty + live badge */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-        {isLive
-          ? <span style={{ fontSize: 8, color: '#e24b4a', fontWeight: 700 }}>● LIVE</span>
-          : <span />}
-        {totalPts > 0 && isFinished && (
-          <span style={{ fontSize: 9, fontWeight: 700, color: theme.accent }}>+{totalPts} pkt</span>
-        )}
-      </div>
+      {/* punkty badge */}
+      {totalPts > 0 && isFinished && (
+        <div style={{ position: 'absolute', top: 2, right: 5, fontSize: 9, fontWeight: 700, color: theme.accent }}>
+          +{totalPts}
+        </div>
+      )}
+      {isLive && (
+        <div style={{ position: 'absolute', top: 2, left: 5, fontSize: 8, color: '#e24b4a', fontWeight: 700 }}>● LIVE</div>
+      )}
 
       {/* Drużyna 1 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '0 8px', height: prediction?.pred_winner ? '40%' : '50%',
+        boxSizing: 'border-box'
+      }}>
         <span style={{
           fontSize: 11, fontWeight: isFinished && match.winner === match.home_team ? 700 : 400,
           color: teamColor(match.home_team),
-          maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0
         }}>
-          {match.home_flag} {match.home_team}
+          {match.home_team}
         </span>
         {(isFinished || isLive) && (
-          <span style={{ fontSize: 12, fontWeight: 800, color: theme.accent, marginLeft: 4 }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: theme.accent, marginLeft: 6, flexShrink: 0 }}>
             {match.home_score}
           </span>
         )}
       </div>
 
-      <div style={{ borderTop: `1px solid ${theme.border}`, margin: '4px 0' }} />
+      <div style={{ borderTop: `1px solid ${theme.border}` }} />
 
       {/* Drużyna 2 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '0 8px', height: prediction?.pred_winner ? '40%' : '50%',
+        boxSizing: 'border-box'
+      }}>
         <span style={{
           fontSize: 11, fontWeight: isFinished && match.winner === match.away_team ? 700 : 400,
           color: teamColor(match.away_team),
-          maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0
         }}>
-          {match.away_flag} {match.away_team}
+          {match.away_team}
         </span>
         {(isFinished || isLive) && (
-          <span style={{ fontSize: 12, fontWeight: 800, color: theme.accent, marginLeft: 4 }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: theme.accent, marginLeft: 6, flexShrink: 0 }}>
             {match.away_score}
           </span>
         )}
@@ -300,8 +309,10 @@ function BracketCard({ match, prediction, theme, isFinal }) {
       {/* Typ gracza */}
       {prediction?.pred_winner && (
         <div style={{
-          marginTop: 3, paddingTop: 3,
+          height: '20%', display: 'flex', alignItems: 'center',
+          padding: '0 8px', boxSizing: 'border-box',
           borderTop: `1px dashed ${theme.border}`,
+          background: predColor() === '#1a7a4a' ? '#1a7a4a10' : predColor() === '#c0392b' ? '#c0392b08' : 'transparent',
           fontSize: 10, color: predColor(),
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
         }}>
