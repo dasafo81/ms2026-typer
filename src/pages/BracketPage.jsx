@@ -137,7 +137,8 @@ export default function BracketPage() {
                 </div>
 
                 {Array.from({ length: count }).map((_, i) => {
-                  const match = stageMatches[i] || null
+                  // Slot i (0-indeksowany) odpowiada bracket_position i+1
+                  const match = stageMatches.find(m => m.bracket_position === i + 1) || null
                   const pred = match ? predictions[match.id] : null
                   const top = i * slot + topOffset
 
