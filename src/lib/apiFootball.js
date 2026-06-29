@@ -38,6 +38,11 @@ export function mapFixtureToMatch(match) {
     const g = match.group || ''
     groupLabel = g.startsWith('GROUP_') ? 'Grupa ' + g.replace('GROUP_', '') : (g || null)
   }
+  let winner = null
+  if (stage !== 'group') {
+    if (match.score?.winner === 'HOME_TEAM') winner = match.homeTeam?.name || null
+    else if (match.score?.winner === 'AWAY_TEAM') winner = match.awayTeam?.name || null
+  }
   return {
     api_match_id: match.id,
     home_team: match.homeTeam?.name || 'TBD',
@@ -47,6 +52,7 @@ export function mapFixtureToMatch(match) {
     away_score: match.score?.fullTime?.away ?? null,
     kickoff_at: match.utcDate,
     stage, group_name: groupLabel, status,
-    venue: match.venue || null
+    venue: match.venue || null,
+    winner
   }
 }
