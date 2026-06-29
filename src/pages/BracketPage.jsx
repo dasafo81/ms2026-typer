@@ -1,11 +1,31 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { usePlayer } from '../hooks/usePlayer'
 import { useTheme } from '../hooks/useTheme'
 
 const STAGES = ['r32', 'r16', 'qf', 'sf', 'final']
 const STAGE_LABELS = {
-  r32: '1/16 finału', r16: '1/8 finału', qf: '1/4 finału', sf: '1/2 finału', final: 'Finał' }
+  r32: '1/16 finału',
+  r16: '1/8 finału',
+  qf: '1/4 finału',
+  sf: '1/2 finału',
+  final: 'Finał'
+}
+
+// Wymiary karty i kolumny
+const CARD_H = 68      // wysokość karty meczu (px)
+const CARD_W = 148     // szerokość karty
+const COL_GAP = 40     // odstęp między kolumnami (miejsce na linie)
+const COL_W = CARD_W + COL_GAP
+
+// Dla każdej rundy: ile meczów i jaki pionowy odstęp między kartami
+function stageLayout(si) {
+  const count = Math.pow(2, 4 - si)  // r32=16, r16=8, qf=4, sf=2, final=1
+  // Każda następna runda ma dwukrotnie większy skok między kartami
+  const slot = CARD_H * Math.pow(2, si)  // wysokość "slotu" na jedną kartę
+  const topOffset = (slot - CARD_H) / 2  // wycentrowanie karty w slocie
+  return { count, slot, topOffset }
+}
 
 export default function BracketPage() {
   const [matches, setMatches] = useState([])
@@ -14,9 +34,7 @@ export default function BracketPage() {
   const { player } = usePlayer()
   const { theme } = useTheme()
 
-  useEffect(() => {
-    load()
-  }, [player])
+  useEffect(() => { load() }, [player])
 
   async function load() {
     const [{ data: matchData }, { data: predData }] = await Promise.all([
@@ -37,6 +55,10 @@ export default function BracketPage() {
   const byStage = {}
   for (const s of STAGES) byStage[s] = matches.filter(m => m.stage === s)
 
+  // Całkowita wysokość SVG = 16 slotów × CARD_H (runda r32 wyznacza wysokość)
+  const totalH = 16 * CARD_H
+  const totalW = STAGES.length * COL_W - COL_GAP + 16  // +16 margines prawa
+
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
@@ -51,144 +73,207 @@ export default function BracketPage() {
         </p>
       </div>
 
-      {/* Desktop bracket */}
-      <div style={{ overflowX: 'auto', paddingBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 0, minWidth: 680, alignItems: 'flex-start' }}>
+      <div style={{ overflowX: 'auto', paddingBottom: 20 }}>
+        <div style={{ position: 'relative', width: totalW, height: totalH, minWidth: totalW }}>
+          {/* SVG linie łączące */}
+          <svg
+            width={totalW}
+            height={totalH}
+            style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none', zIndex: 0 }}
+          >
+            {STAGES.slice(0, -1).map((stage, si) => {
+              const { count, slot, topOffset } = stageLayout(si)
+              const nextSlot = slot * 2
+              const lines = []
+              const x1 = si * COL_W + CARD_W          // prawy bok obecnej kolumny
+              const x2 = (si + 1) * COL_W              // lewy bok następnej kolumny
+
+              for (let i = 0; i < count; i += 2) {
+                const y1 = i * slot + topOffset + CARD_H / 2
+                const y2 = (i + 1) * slot + topOffset + CARD_H / 2
+                const yMid = (y1 + y2) / 2
+                const xMid = (x1 + x2) / 2
+
+                lines.push(
+                  <g key={`${si}-${i}`}>
+                    {/* linia z karty górnej */}
+                    <path
+                      d={`M ${x1} ${y1} H ${xMid} V ${yMid}`}
+                      fill="none" stroke={theme.accent + '55'} strokeWidth={1.5}
+                    />
+                    {/* linia z karty dolnej */}
+                    <path
+                      d={`M ${x1} ${y2} H ${xMid} V ${yMid}`}
+                      fill="none" stroke={theme.accent + '55'} strokeWidth={1.5}
+                    />
+                    {/* linia do następnej kolumny */}
+                    <path
+                      d={`M ${xMid} ${yMid} H ${x2}`}
+                      fill="none" stroke={theme.accent + '55'} strokeWidth={1.5}
+                    />
+                  </g>
+                )
+              }
+              return lines
+            })}
+          </svg>
+
+          {/* Karty meczów */}
           {STAGES.map((stage, si) => {
+            const { count, slot, topOffset } = stageLayout(si)
             const stageMatches = byStage[stage] || []
-            const colMatches = stageMatches.length > 0 ? stageMatches : [null]
+            const x = si * COL_W
 
             return (
-              <div key={stage} style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div key={stage} style={{ position: 'absolute', left: x, top: 0, width: CARD_W }}>
+                {/* Nagłówek rundy */}
                 <div style={{
-                  fontSize: 10, fontWeight: 700, letterSpacing: 1.5,
-                  color: theme.accent, textTransform: 'uppercase',
-                  textAlign: 'center', marginBottom: 12, padding: '4px 0',
-                  borderBottom: `1px solid ${theme.accent}33`
+                  position: 'absolute',
+                  top: -28, left: 0, width: CARD_W,
+                  fontSize: 9, fontWeight: 700, letterSpacing: 1.5,
+                  color: theme.accent, textTransform: 'uppercase', textAlign: 'center'
                 }}>
                   {STAGE_LABELS[stage]}
                 </div>
-                <div style={{
-                  display: 'flex', flexDirection: 'column',
-                  gap: stage === 'r16' ? 8 : stage === 'qf' ? 60 : stage === 'sf' ? 156 : 0,
-                  padding: `${si === 0 ? 0 : si === 1 ? 30 : si === 2 ? 90 : 210}px 6px 0`
-                }}>
-                  {colMatches.map((match, mi) => (
-                    <BracketMatch
-                      key={match?.id || mi}
-                      match={match}
-                      prediction={match ? predictions[match.id] : null}
-                      theme={theme}
-                      isFinal={stage === 'final'}
-                    />
-                  ))}
-                </div>
+
+                {Array.from({ length: count }).map((_, i) => {
+                  const match = stageMatches[i] || null
+                  const pred = match ? predictions[match.id] : null
+                  const top = i * slot + topOffset
+
+                  return (
+                    <div
+                      key={i}
+                      style={{ position: 'absolute', top, left: 0, width: CARD_W, zIndex: 1 }}
+                    >
+                      <BracketCard match={match} prediction={pred} theme={theme} isFinal={stage === 'final'} />
+                    </div>
+                  )
+                })}
               </div>
             )
           })}
         </div>
       </div>
 
-      {/* Punkty pucharowe */}
-      {player && (
-        <div style={{
-          marginTop: 24, padding: '14px 18px',
-          background: theme.bg2, borderRadius: 12,
-          border: `1px solid ${theme.accent}33`
-        }}>
-          <div style={{ fontSize: 11, color: theme.text3, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
-            Twoje punkty za fazę pucharową
+      {/* Etykiety rund pod drabinką (dla czytelności na małych ekranach) */}
+      <div style={{ display: 'flex', gap: 0, marginTop: 8, overflowX: 'auto' }}>
+        {STAGES.map(s => (
+          <div key={s} style={{ width: COL_W, flexShrink: 0, textAlign: 'center', fontSize: 10, color: theme.text3 }}>
+            {stageLayout(STAGES.indexOf(s)).count} meczów
           </div>
-          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-            {[
-              { label: 'Za wyniki', key: 'points_earned' },
-              { label: 'Za awans', key: 'pts_advancement' },
-              { label: 'Za dogrywkę', key: 'pts_extra_time' },
-              { label: 'Za karne', key: 'pts_penalty' },
-            ].map(cat => {
-              const total = matches.reduce((sum, m) => {
-                const p = predictions[m.id]
-                return sum + (p ? (p[cat.key] || 0) : 0)
-              }, 0)
-              return (
+        ))}
+      </div>
+
+      {/* Punkty pucharowe gracza */}
+      {player && (() => {
+        const kMatches = matches
+        const totalByKey = (key) => kMatches.reduce((s, m) => s + ((predictions[m.id]?.[key]) || 0), 0)
+        const grand = totalByKey('points_earned') + totalByKey('pts_advancement') + totalByKey('pts_extra_time') + totalByKey('pts_penalty')
+        return (
+          <div style={{
+            marginTop: 28, padding: '14px 18px',
+            background: theme.bg2, borderRadius: 12,
+            border: `1px solid ${theme.accent}33`
+          }}>
+            <div style={{ fontSize: 11, color: theme.text3, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 10 }}>
+              Twoje punkty za fazę pucharową
+            </div>
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              {[
+                { label: 'Za wyniki', key: 'points_earned' },
+                { label: 'Za awans', key: 'pts_advancement' },
+                { label: 'Za dogrywkę', key: 'pts_extra_time' },
+                { label: 'Za karne', key: 'pts_penalty' },
+              ].map(cat => (
                 <div key={cat.key}>
                   <div style={{ fontSize: 11, color: theme.text3 }}>{cat.label}</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'Space Grotesk', color: theme.accent }}>{total}</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, fontFamily: 'Space Grotesk', color: theme.accent }}>
+                    {totalByKey(cat.key)}
+                  </div>
                 </div>
-              )
-            })}
-            <div style={{ marginLeft: 'auto' }}>
-              <div style={{ fontSize: 11, color: theme.text3 }}>Łącznie pucharowe</div>
-              <div style={{ fontSize: 28, fontWeight: 800, fontFamily: 'Space Grotesk', color: theme.accent }}>
-                {matches.reduce((sum, m) => {
-                  const p = predictions[m.id]
-                  if (!p) return sum
-                  return sum + (p.points_earned || 0) + (p.pts_advancement || 0) + (p.pts_extra_time || 0) + (p.pts_penalty || 0)
-                }, 0)}
+              ))}
+              <div style={{ marginLeft: 'auto' }}>
+                <div style={{ fontSize: 11, color: theme.text3 }}>Łącznie pucharowe</div>
+                <div style={{ fontSize: 28, fontWeight: 800, fontFamily: 'Space Grotesk', color: theme.accent }}>
+                  {grand}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
 
-function BracketMatch({ match, prediction, theme, isFinal }) {
-  if (!match) return (
-    <div style={{
-      background: theme.bg2, border: `1px solid ${theme.border}`,
-      borderRadius: 8, padding: '8px 10px', opacity: 0.4
-    }}>
-      <div style={{ fontSize: 11, color: theme.text3, fontStyle: 'italic' }}>TBD</div>
-      <div style={{ borderTop: `1px solid ${theme.border}`, margin: '5px 0' }} />
-      <div style={{ fontSize: 11, color: theme.text3, fontStyle: 'italic' }}>TBD</div>
-    </div>
-  )
-
-  const isFinished = match.status === 'finished'
-  const isLive = match.status === 'live'
-  const isTBD = match.home_team === 'TBD'
+function BracketCard({ match, prediction, theme, isFinal }) {
+  const isEmpty = !match || match.home_team === 'TBD'
+  const isFinished = match?.status === 'finished'
+  const isLive = match?.status === 'live'
 
   const totalPts = prediction
-    ? (prediction.points_earned || 0) + (prediction.pts_advancement || 0) +
-      (prediction.pts_extra_time || 0) + (prediction.pts_penalty || 0)
+    ? (prediction.points_earned || 0) + (prediction.pts_advancement || 0)
+      + (prediction.pts_extra_time || 0) + (prediction.pts_penalty || 0)
     : 0
 
-  function teamColor(teamName) {
-    if (!isFinished || !match.winner) return theme.text
-    if (teamName === match.winner) return '#1a7a4a'
-    return '#c0392b'
+  function teamColor(name) {
+    if (!isFinished || !match?.winner) return theme.text
+    return name === match.winner ? '#1a7a4a' : '#c0392b'
   }
 
   function predColor() {
     if (!prediction?.pred_winner) return theme.text3
     if (!isFinished) return theme.accent
-    return prediction.pred_winner === match.winner ? '#1a7a4a' : '#c0392b'
+    return prediction.pred_winner === match?.winner ? '#1a7a4a' : '#c0392b'
+  }
+
+  if (isEmpty) {
+    return (
+      <div style={{
+        height: CARD_H, background: theme.bg2,
+        border: `1px solid ${theme.border}`,
+        borderRadius: 8, padding: '8px 10px',
+        opacity: 0.45, display: 'flex', flexDirection: 'column', justifyContent: 'center'
+      }}>
+        <div style={{ fontSize: 11, color: theme.text3, fontStyle: 'italic' }}>TBD</div>
+        <div style={{ borderTop: `1px solid ${theme.border}`, margin: '6px 0' }} />
+        <div style={{ fontSize: 11, color: theme.text3, fontStyle: 'italic' }}>TBD</div>
+      </div>
+    )
   }
 
   return (
     <div style={{
+      height: CARD_H,
       background: theme.bg2,
       border: `1px solid ${isLive ? '#e24b4a' : isFinal ? theme.accent : theme.border}`,
-      borderRadius: 8, padding: '8px 10px',
+      borderRadius: 8, padding: '6px 10px',
       borderLeft: isFinal ? `3px solid ${theme.accent}` : undefined,
-      minWidth: 130
+      display: 'flex', flexDirection: 'column', justifyContent: 'center',
+      boxSizing: 'border-box'
     }}>
-      {totalPts > 0 && isFinished && (
-        <div style={{
-          fontSize: 9, fontWeight: 700, color: theme.accent,
-          textAlign: 'right', marginBottom: 3
-        }}>+{totalPts} pkt</div>
-      )}
+      {/* punkty + live badge */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+        {isLive
+          ? <span style={{ fontSize: 8, color: '#e24b4a', fontWeight: 700 }}>● LIVE</span>
+          : <span />}
+        {totalPts > 0 && isFinished && (
+          <span style={{ fontSize: 9, fontWeight: 700, color: theme.accent }}>+{totalPts} pkt</span>
+        )}
+      </div>
 
       {/* Drużyna 1 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0' }}>
-        <span style={{ fontSize: 11, fontWeight: isFinished && match.winner === match.home_team ? 500 : 400, color: isTBD ? theme.text3 : teamColor(match.home_team) }}>
-          {isTBD ? 'TBD' : match.home_team}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{
+          fontSize: 11, fontWeight: isFinished && match.winner === match.home_team ? 700 : 400,
+          color: teamColor(match.home_team),
+          maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+        }}>
+          {match.home_flag} {match.home_team}
         </span>
         {(isFinished || isLive) && (
-          <span style={{ fontSize: 11, fontWeight: 700, color: theme.accent, marginLeft: 6 }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: theme.accent, marginLeft: 4 }}>
             {match.home_score}
           </span>
         )}
@@ -197,12 +282,16 @@ function BracketMatch({ match, prediction, theme, isFinal }) {
       <div style={{ borderTop: `1px solid ${theme.border}`, margin: '4px 0' }} />
 
       {/* Drużyna 2 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '2px 0' }}>
-        <span style={{ fontSize: 11, fontWeight: isFinished && match.winner === match.away_team ? 500 : 400, color: isTBD ? theme.text3 : teamColor(match.away_team) }}>
-          {isTBD ? 'TBD' : match.away_team}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{
+          fontSize: 11, fontWeight: isFinished && match.winner === match.away_team ? 700 : 400,
+          color: teamColor(match.away_team),
+          maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+        }}>
+          {match.away_flag} {match.away_team}
         </span>
         {(isFinished || isLive) && (
-          <span style={{ fontSize: 11, fontWeight: 700, color: theme.accent, marginLeft: 6 }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: theme.accent, marginLeft: 4 }}>
             {match.away_score}
           </span>
         )}
@@ -211,23 +300,13 @@ function BracketMatch({ match, prediction, theme, isFinal }) {
       {/* Typ gracza */}
       {prediction?.pred_winner && (
         <div style={{
-          marginTop: 5, paddingTop: 4,
+          marginTop: 3, paddingTop: 3,
           borderTop: `1px dashed ${theme.border}`,
-          fontSize: 10, color: predColor()
+          fontSize: 10, color: predColor(),
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
         }}>
           → {prediction.pred_winner} {isFinished ? (prediction.pred_winner === match.winner ? '✓' : '✗') : '?'}
         </div>
-      )}
-
-      {/* Dodatkowe info */}
-      {isFinished && (match.extra_time || match.penalty) && (
-        <div style={{ fontSize: 9, color: theme.text3, marginTop: 3 }}>
-          {match.extra_time && 'dogrywka'}{match.penalty && ' · karne'}
-        </div>
-      )}
-
-      {isLive && (
-        <div style={{ fontSize: 9, color: '#e24b4a', fontWeight: 700, marginTop: 3 }}>● LIVE</div>
       )}
     </div>
   )
