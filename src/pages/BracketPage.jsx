@@ -252,18 +252,7 @@ function BracketCard({ match, prediction, theme, isFinal }) {
       borderLeft: isFinal ? `3px solid ${theme.accent}` : undefined,
       overflow: 'hidden',
       boxSizing: 'border-box',
-      position: 'relative'
     }}>
-      {/* punkty badge */}
-      {totalPts > 0 && isFinished && (
-        <div style={{ position: 'absolute', top: 2, right: 5, fontSize: 9, fontWeight: 700, color: theme.accent }}>
-          +{totalPts}
-        </div>
-      )}
-      {isLive && (
-        <div style={{ position: 'absolute', top: 2, left: 5, fontSize: 8, color: '#e24b4a', fontWeight: 700 }}>● LIVE</div>
-      )}
-
       {/* Drużyna 1 */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -275,13 +264,21 @@ function BracketCard({ match, prediction, theme, isFinal }) {
           color: teamColor(match.home_team),
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0
         }}>
+          {isLive && <span style={{ fontSize: 8, color: '#e24b4a', fontWeight: 700, marginRight: 4 }}>●</span>}
           {match.home_team}
         </span>
-        {(isFinished || isLive) && (
-          <span style={{ fontSize: 12, fontWeight: 800, color: theme.accent, marginLeft: 6, flexShrink: 0 }}>
-            {match.home_score}
-          </span>
-        )}
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 4 }}>
+          {totalPts > 0 && isFinished && (
+            <span style={{ fontSize: 9, fontWeight: 700, color: theme.accent, background: theme.accent + '18', borderRadius: 4, padding: '1px 5px' }}>
+              +{totalPts} pkt
+            </span>
+          )}
+          {(isFinished || isLive) && (
+            <span style={{ fontSize: 12, fontWeight: 800, color: theme.accent, minWidth: 14, textAlign: 'right' }}>
+              {match.home_score}
+            </span>
+          )}
+        </span>
       </div>
 
       <div style={{ borderTop: `1px solid ${theme.border}` }} />
