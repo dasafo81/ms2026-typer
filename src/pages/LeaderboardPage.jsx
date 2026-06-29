@@ -3,6 +3,11 @@ import { supabase } from '../lib/supabase'
 import { usePlayer } from '../hooks/usePlayer'
 import { useTheme } from '../hooks/useTheme'
 
+// Łączne punkty za typ: wynik + awans + karne + dogrywka
+function totalPredPoints(p) {
+  return (p.points_earned || 0) + (p.pts_advancement || 0) + (p.pts_penalty || 0) + (p.pts_extra_time || 0)
+}
+
 function computeBadges(playerName, allPreds, rows, isBlackSeriesChamp = false, blackSeriesCount = 0) {
   const badges = []
   const myPreds = allPreds.filter(p => p.players?.name === playerName).sort((a, b) => new Date(a.matches?.kickoff_at) - new Date(b.matches?.kickoff_at))
@@ -140,7 +145,7 @@ export default function LeaderboardPage() {
     for (const p of preds) {
       if (recentMatchIds.has(p.match_id)) {
         const name = p.players.name
-        recentPts[name] = (recentPts[name] || 0) + (p.points_earned || 0)
+        recentPts[name] = (recentPts[name] || 0) + totalPredPoints(p)
       }
     }
     const onFireEntry = Object.entries(recentPts).sort((a, b) => { if (b[1] !== a[1]) return b[1] - a[1]; const aT = allRows.find(r => r.name === a[0])?.total_points || 0; const bT = allRows.find(r => r.name === b[0])?.total_points || 0; return bT - aT })[0]
@@ -154,7 +159,7 @@ export default function LeaderboardPage() {
     for (const row of allRows) {
       const playerPreds = preds.filter(p => p.players.name === row.name).sort((a, b) => new Date(a.matches.kickoff_at) - new Date(b.matches.kickoff_at))
       let streak = 0
-      for (let i = playerPreds.length - 1; i >= 0; i--) { if ((playerPreds[i].points_earned || 0) === 0) streak++; else break }
+      for (let i = playerPreds.length - 1; i >= 0; i--) { if (totalPredPoints(playerPreds[i]) === 0) streak++; else break }
       streaks[row.name] = streak
     }
     const unluckyEntry = Object.entries(streaks).sort((a, b) => b[1] - a[1])[0]
@@ -167,7 +172,7 @@ export default function LeaderboardPage() {
   const missStreaks = rows.map(r => {
     const rPreds = allPreds.filter(p => p.players?.name === r.name).sort((a, b) => new Date(a.matches?.kickoff_at) - new Date(b.matches?.kickoff_at))
     let maxMiss = 0, cur = 0
-    for (const p of rPreds) { if ((p.points_earned || 0) === 0) { cur++; maxMiss = Math.max(maxMiss, cur) } else cur = 0 }
+    for (const p of rPreds) { if (totalPredPoints(p) === 0) { cur++; maxMiss = Math.max(maxMiss, cur) } else cur = 0 }
     return { name: r.name, max: maxMiss }
   })
   const topMiss = [...missStreaks].sort((a, b) => b.max - a.max)[0]
