@@ -75,6 +75,12 @@ export default function AdminPage() {
     setSyncResult({ ok: true, msg: 'Punkty przeliczone' })
   }
 
+  async function setWinner(matchId, value) {
+    await supabase.from('matches').update({ winner: value || null }).eq('id', matchId)
+    await supabase.rpc('calculate_points', { p_match_id: matchId })
+    await loadMatches()
+  }
+
   async function toggleAdmin(pid, current) {
     await supabase.from('players').update({ is_admin: !current }).eq('id', pid)
     await loadPlayers()
@@ -249,6 +255,20 @@ export default function AdminPage() {
                   Przelicz pkt
                 </button>
               </div>
+              {m.stage !== 'group' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: 'var(--text3)', fontSize: 11 }}>Awansuje:</span>
+                  <select
+                    value={m.winner ?? ''}
+                    onChange={e => setWinner(m.id, e.target.value)}
+                    style={{ fontSize: 12, padding: '4px 6px', borderRadius: 6, background: 'var(--bg3)', border: '1px solid var(--border2)', color: 'var(--text)' }}
+                  >
+                    <option value="">— auto —</option>
+                    <option value={m.home_team}>{m.home_team}</option>
+                    <option value={m.away_team}>{m.away_team}</option>
+                  </select>
+                </div>
+              )}
             </div>
           ))}
         </div>
