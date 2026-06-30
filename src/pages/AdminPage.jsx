@@ -46,6 +46,16 @@ export default function AdminPage() {
     await loadMatches()
   }
 
+  async function advanceWinner(matchId) {
+    const { error } = await supabase.rpc('advance_winner', { p_match_id: matchId })
+    if (error) {
+      setSyncResult({ ok: false, msg: 'Błąd awansu: ' + error.message })
+    } else {
+      setSyncResult({ ok: true, msg: 'Zwycięzca awansowany do następnej rundy' })
+      await loadMatches()
+    }
+  }
+
   async function toggleAdmin(pid, current) {
     await supabase.from('players').update({ is_admin: !current }).eq('id', pid)
     await loadPlayers()
@@ -204,7 +214,7 @@ export default function AdminPage() {
                 </button>
               </div>
               {m.stage !== 'group' && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                   <span style={{ color: 'var(--text3)', fontSize: 11 }}>Awansuje:</span>
                   <select
                     value={m.winner ?? ''}
@@ -215,6 +225,17 @@ export default function AdminPage() {
                     <option value={m.home_team}>{m.home_team}</option>
                     <option value={m.away_team}>{m.away_team}</option>
                   </select>
+                  {m.stage !== 'final' && (
+                    <button
+                      className="btn btn-ghost"
+                      disabled={!m.winner}
+                      onClick={() => advanceWinner(m.id)}
+                      style={{ fontSize: 11, padding: '4px 8px' }}
+                      title={!m.winner ? 'Wybierz najpierw zwycięzcę' : 'Wstaw zwycięzcę do drabinki następnej rundy'}
+                    >
+                      → Awansuj do drabinki
+                    </button>
+                  )}
                 </div>
               )}
             </div>
