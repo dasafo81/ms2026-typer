@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { fetchFixtures, fetchLiveFixtures, mapFixtureToMatch } from '../lib/apiFootball'
 import { usePlayer } from '../hooks/usePlayer'
 import { useNavigate } from 'react-router-dom'
 
@@ -12,7 +11,6 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState(false)
   const [pass, setPass] = useState('')
   const [matches, setMatches] = useState([])
-  const [syncing, setSyncing] = useState(false)
   const [syncResult, setSyncResult] = useState(null)
   const [log, setLog] = useState([])
   const [players, setPlayers] = useState([])
@@ -35,39 +33,6 @@ export default function AdminPage() {
   async function loadLog() {
     const { data } = await supabase.from('sync_log').select('*').order('synced_at', { ascending: false }).limit(10)
     setLog(data || [])
-  }
-
-  async function syncFromAPI(liveOnly = false) {
-    setSyncing(true)
-    setSyncResult(null)
-    try {
-      const fixtures = liveOnly ? await fetchLiveFixtures() : await fetchFixtures()
-      let updated = 0
-
-      for (const fixture of fixtures) {
-        const mapped = mapFixtureToMatch(fixture)
-        const { error } = await supabase.from('matches').upsert(mapped, { onConflict: 'api_match_id' })
-        if (!error) updated++
-
-        // Jeśli mecz zakończony — przelicz punkty
-        if (mapped.status === 'finished') {
-          const { data: match } = await supabase
-            .from('matches').select('id').eq('api_match_id', mapped.api_match_id).single()
-          if (match) {
-            await supabase.rpc('calculate_points', { p_match_id: match.id })
-          }
-        }
-      }
-
-      await supabase.from('sync_log').insert({ matches_updated: updated, notes: liveOnly ? 'Live sync' : 'Full sync' })
-      setSyncResult({ ok: true, msg: `Zaktualizowano ${updated} meczów` })
-      await loadMatches()
-      await loadLog()
-    } catch (err) {
-      setSyncResult({ ok: false, msg: err.message })
-    } finally {
-      setSyncing(false)
-    }
   }
 
   async function calcPoints(matchId) {
@@ -145,29 +110,12 @@ export default function AdminPage() {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 24 }}>
-        {/* Sync */}
-        <div className="card">
-          <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 15, marginBottom: 14 }}>🔄 Sync z API-Football</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <button
-              className="btn btn-primary"
-              onClick={() => syncFromAPI(false)}
-              disabled={syncing}
-              style={{ justifyContent: 'center' }}
-            >
-              {syncing ? 'Synchronizuję...' : 'Pełny sync (wszystkie mecze)'}
-            </button>
-            <button
-              className="btn btn-ghost"
-              onClick={() => syncFromAPI(true)}
-              disabled={syncing}
-              style={{ justifyContent: 'center' }}
-            >
-              {syncing ? '...' : '⚡ Live sync (tylko trwające)'}
-            </button>
-          </div>
-          <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 10 }}>
-            Pełny sync = 1 zapytanie API. Live sync = 1 zapytanie. Limit: 100/dzień na planie Free.
+        {/* Sync wyłączony — wszystkie wyniki wpisujemy ręcznie */}
+        <div className="card" style={{ opacity: 0.7 }}>
+          <h3 style={{ fontFamily: 'Space Grotesk', fontSize: 15, marginBottom: 8 }}>🔒 Sync z API wyłączony</h3>
+          <p style={{ fontSize: 12, color: 'var(--text3)' }}>
+            Wyniki wpisujemy ręcznie poniżej. Cron i przyciski sync zostały usunięte,
+            żeby uniknąć nadpisania wyników karnych błędnym wynikiem z API.
           </p>
         </div>
 
