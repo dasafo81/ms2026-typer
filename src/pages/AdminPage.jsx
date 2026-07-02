@@ -40,6 +40,12 @@ export default function AdminPage() {
     setSyncResult({ ok: true, msg: 'Punkty przeliczone' })
   }
 
+  async function setPenalties(matchId, value) {
+    await supabase.from('matches').update({ went_to_penalties: value }).eq('id', matchId)
+    await supabase.rpc('calculate_points', { p_match_id: matchId })
+    await loadMatches()
+  }
+
   async function setWinner(matchId, value) {
     await supabase.from('matches').update({ winner: value || null }).eq('id', matchId)
     await supabase.rpc('calculate_points', { p_match_id: matchId })
@@ -225,6 +231,15 @@ export default function AdminPage() {
                     <option value={m.home_team}>{m.home_team}</option>
                     <option value={m.away_team}>{m.away_team}</option>
                   </select>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, color: m.went_to_penalties ? 'var(--accent)' : 'var(--text3)', cursor: 'pointer', userSelect: 'none' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!m.went_to_penalties}
+                      onChange={e => setPenalties(m.id, e.target.checked)}
+                      style={{ accentColor: 'var(--accent)', width: 14, height: 14 }}
+                    />
+                    Karne
+                  </label>
                   {m.stage !== 'final' && (
                     <button
                       className="btn btn-ghost"
