@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { usePlayer } from '../hooks/usePlayer'
 import { useTheme } from '../hooks/useTheme'
+import { STAGE_PROGRESS } from '../lib/theme'
 
 // Łączne punkty za typ: wynik + awans + karne + dogrywka
 function totalPredPoints(p) {
@@ -113,15 +114,22 @@ export default function LeaderboardPage() {
   const [expanded, setExpanded] = useState(null)
   const [loading, setLoading] = useState(true)
   const { player } = usePlayer()
-  const { theme, knockout } = useTheme()
+  const { theme, knockout, currentStage } = useTheme()
+  const [knockoutFlags, setKnockoutFlags] = useState([])
 
   // Sprawdź czy jest faza pucharowa na podstawie danych
   const [isKnockout, setIsKnockout] = useState(false)
   useEffect(() => {
-    supabase.from('matches').select('stage, status').neq('stage', 'group').then(({ data }) => {
-      if (data && data.length > 0) setIsKnockout(true)
+    supabase.from('matches').select('stage, status, home_flag, away_flag').neq('stage', 'group').then(({ data }) => {
+      if (data && data.length > 0) {
+        setIsKnockout(true)
+        const stageKey = currentStage || 'r16'
+        const stageMatches = data.filter(m => m.stage === stageKey)
+        const flags = [...new Set(stageMatches.flatMap(m => [m.home_flag, m.away_flag]).filter(Boolean))]
+        setKnockoutFlags(flags)
+      }
     })
-  }, [])
+  }, [currentStage])
 
   useEffect(() => {
     load()
@@ -179,27 +187,20 @@ export default function LeaderboardPage() {
 
   const t = theme
 
+  const leftFlags = knockoutFlags.slice(0, Math.ceil(knockoutFlags.length / 2))
+  const rightFlags = knockoutFlags.slice(Math.ceil(knockoutFlags.length / 2))
+
   return (
-    <div>
-      {isKnockout && (
-        <div style={{
-          marginBottom: 20, padding: '12px 18px',
-          background: `${t.accent}18`,
-          border: `1px solid ${t.accent}55`,
-          borderRadius: 12,
-          display: 'flex', alignItems: 'center', gap: 12
-        }}>
-          <span style={{ fontSize: 24 }}>🏆</span>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: t.accent, letterSpacing: 1, textTransform: 'uppercase' }}>
-              Faza pucharowa — Karingtony World Cup League 2026
-            </div>
-            <div style={{ fontSize: 12, color: t.text2, marginTop: 2 }}>
-              Dodatkowe punkty za awans (+2) i karne (+1)
-            </div>
-          </div>
+    <div style={{ display: 'flex', gap: 0 }}>
+      {/* Flagi po lewej */}
+      {isKnockout && knockoutFlags.length > 0 && (
+        <div style={{ width: 36, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, paddingTop: 70, opacity: 0.7 }}>
+          {leftFlags.map((f, i) => <span key={i} style={{ fontSize: 20 }}>{f}</span>)}
         </div>
       )}
+
+      <div style={{ flex: 1, minWidth: 0, padding: isKnockout && knockoutFlags.length > 0 ? '0 10px' : 0 }}>
+      {isKnockout && <KnockoutProgress currentStage={currentStage} theme={t} />}
 
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 4, color: t.text }}>🏆 Tabela rankingowa</h1>
@@ -315,6 +316,85 @@ export default function LeaderboardPage() {
           ))}
         </div>
       )}
+      </div>
+
+      {/* Flagi po prawej */}
+      {isKnockout && knockoutFlags.length > 0 && (
+        <div style={{ width: 36, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, paddingTop: 70, opacity: 0.7 }}>
+          {rightFlags.map((f, i) => <span key={i} style={{ fontSize: 20 }}>{f}</span>)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function KnockoutProgress({ currentStage, theme: t }) {
+  const stages = ['r32', 'r16', 'qf', 'sf', 'final']
+  const currentIdx = stages.indexOf(currentStage)
+  const info = STAGE_PROGRESS[currentStage]
+
+  return (
+    <div style={{
+      marginBottom: 20, padding: '16px 20px',
+      background: `linear-gradient(135deg, ${t.accent}14, ${t.accent}08)`,
+      border: `1px solid ${t.accent}25`,
+      borderRadius: 12
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <span style={{ fontSize: 22 }}>{info?.icon || '🏆'}</span>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: t.accent }}>{info?.label || 'Faza pucharowa'}</div>
+          <div style={{ fontSize: 11, color: t.text3, marginTop: 2 }}>Karingtony World Cup League 2026 · awans +2 pkt · karne +1 pkt</div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        {stages.map((s, i) => {
+          const isPast = i < currentIdx
+          const isCurrent = i === currentIdx
+          const isLast = i === stages.length - 1
+          const sp = STAGE_PROGRESS[s]
+
+          return (
+            <div key={s} style={{ display: 'flex', alignItems: 'center', flex: isLast ? 0 : 1 }}>
+              <div style={{
+                width: isCurrent ? 32 : 22, height: isCurrent ? 32 : 22,
+                borderRadius: '50%',
+                background: isCurrent ? t.accent : isPast ? t.accent + '88' : t.bg3,
+                border: !isPast && !isCurrent ? `1px solid ${t.bg4}` : 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: isCurrent ? 14 : 10, fontWeight: 700,
+                color: isPast || isCurrent ? '#fff' : t.text3,
+                flexShrink: 0,
+                boxShadow: isCurrent ? `0 0 14px ${t.accent}40` : 'none'
+              }}>
+                {isCurrent ? sp.icon : isPast ? '✓' : (isLast ? '🏆' : i + 1)}
+              </div>
+              {!isLast && (
+                <div style={{ flex: 1, height: 2, minWidth: 8, background: isPast ? t.accent + '66' : t.bg4, borderRadius: 1 }} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      <div style={{ display: 'flex', marginTop: 6 }}>
+        {stages.map((s, i) => {
+          const isCurrent = i === currentIdx
+          const isLast = i === stages.length - 1
+          return (
+            <div key={s} style={{ flex: isLast ? 0 : 1 }}>
+              <div style={{
+                fontSize: 9, color: isCurrent ? t.accent : t.text3,
+                fontWeight: isCurrent ? 700 : 400,
+                width: isCurrent ? 32 : 22, textAlign: 'center'
+              }}>
+                {STAGE_PROGRESS[s].short}
+              </div>
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
