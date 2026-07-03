@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { usePlayer } from '../hooks/usePlayer'
 import { useTheme } from '../hooks/useTheme'
 import { STAGE_PROGRESS } from '../lib/theme'
+import { flagFor } from '../lib/flags'
 
 // Łączne punkty za typ: wynik + awans + karne + dogrywka
 function totalPredPoints(p) {
@@ -121,20 +122,34 @@ export default function LeaderboardPage() {
   // Sprawdź czy jest faza pucharowa na podstawie danych
   const [isKnockout, setIsKnockout] = useState(false)
   useEffect(() => {
-    supabase.from('matches').select('stage, status, kickoff_at, home_team, away_team, home_flag, away_flag').neq('stage', 'group').then(({ data }) => {
-      if (data && data.length > 0) {
-        setIsKnockout(true)
-        const stageKey = currentStage || 'r16'
-        const stageMatches = data.filter(m => m.stage === stageKey && m.home_team && m.home_team !== 'TBD')
-        const flags = [...new Set(stageMatches.flatMap(m => [m.home_flag, m.away_flag]).filter(Boolean))]
-        setKnockoutFlags(flags)
-        // Najbliższy zaplanowany mecz z prawdziwymi drużynami
-        const now = Date.now()
-        const upcoming = data
-          .filter(m => m.status === 'scheduled' && m.home_team && m.home_team !== 'TBD' && new Date(m.kickoff_at).getTime() > now)
-          .sort((a, b) => new Date(a.kickoff_at) - new Date(b.kickoff_at))
-        setNextMatch(upcoming[0] || null)
+    supabase.from('matches').select('stage, status, kickoff_at, home_team, away_team, home_flag, away_flag').then(({ data }) => {
+      if (!data) return
+      const ko = data.filter(m => m.stage && m.stage !== 'group' && m.stage !== 'GROUP_STAGE')
+      if (ko.length === 0) return
+      setIsKnockout(true)
+
+      // Flaga: baza jeśli jest, potem słownik z lib/flags.js
+      const flagMap = {}
+      for (const m of data) {
+        if (m.home_team && m.home_flag) flagMap[m.home_team] = m.home_flag
+        if (m.away_team && m.away_flag) flagMap[m.away_team] = m.away_flag
       }
+      const flagOf = (team, dbFlag) => dbFlag || flagMap[team] || flagFor(team) || null
+
+      const stageKey = currentStage || 'r16'
+      const stageMatches = ko.filter(m => m.stage === stageKey && m.home_team && m.home_team !== 'TBD')
+      const flags = [...new Set(
+        stageMatches.flatMap(m => [flagOf(m.home_team, m.home_flag), flagOf(m.away_team, m.away_flag)]).filter(Boolean)
+      )]
+      setKnockoutFlags(flags)
+
+      // Najbliższy zaplanowany mecz z prawdziwymi drużynami (+ uzupełnione flagi)
+      const now = Date.now()
+      const upcoming = ko
+        .filter(m => m.status === 'scheduled' && m.home_team && m.home_team !== 'TBD' && new Date(m.kickoff_at).getTime() > now)
+        .sort((a, b) => new Date(a.kickoff_at) - new Date(b.kickoff_at))
+      const nm = upcoming[0] || null
+      setNextMatch(nm ? { ...nm, home_flag: flagOf(nm.home_team, nm.home_flag), away_flag: flagOf(nm.away_team, nm.away_flag) } : null)
     })
   }, [currentStage])
 
