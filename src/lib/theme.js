@@ -6,17 +6,14 @@ export function isKnockoutPhase(matches) {
 export function currentKnockoutStage(matches) {
   if (!matches || matches.length === 0) return null
   const ORDER = ['r32', 'r16', 'qf', 'sf', 'final']
-  // Szukaj od najwcześniejszej rundy — pierwsza która ma mecze z prawdziwymi drużynami
-  // i nie jest jeszcze w pełni zakończona = aktualna runda
-  let lastWithRealMatches = null
+  // Najnowsza runda z prawdziwymi drużynami = aktualna
+  // Bo drużyny pojawiają się w kolejnej rundzie dopiero po zakończeniu poprzedniej
+  let current = null
   for (const s of ORDER) {
-    const sm = matches.filter(m => m.stage === s)
-    const real = sm.filter(m => m.home_team && m.home_team !== 'TBD')
-    if (real.length === 0) continue
-    lastWithRealMatches = s
-    if (real.some(m => m.status === 'live' || m.status === 'scheduled')) return s
+    const real = matches.filter(m => m.stage === s && m.home_team && m.home_team !== 'TBD')
+    if (real.length > 0) current = s
   }
-  return lastWithRealMatches
+  return current
 }
 
 export const STAGE_PROGRESS = {
