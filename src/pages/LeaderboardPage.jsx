@@ -375,18 +375,23 @@ function KnockoutProgress({ currentStage, theme: t, flags = [], nextMatch }) {
       `}</style>
 
       {/* Marquee flag */}
-      {flags.length > 0 && (
-        <div style={{
-          overflow: 'hidden', whiteSpace: 'nowrap',
-          background: `${t.accent}0e`,
-          borderBottom: `1px solid ${t.accent}1a`,
-          padding: '7px 0'
-        }}>
-          <div style={{ display: 'inline-flex', gap: 22, fontSize: 16, animation: 'kt-marquee 36s linear infinite' }}>
-            {[...flags, ...flags].map((f, i) => <span key={i}>{f}</span>)}
+      {flags.length > 0 && (() => {
+        // Powiel listę aż będzie wystarczająco szeroka na płynną pętlę
+        const tile = []
+        while (tile.length < 48) tile.push(...flags)
+        return (
+          <div style={{
+            overflow: 'hidden', whiteSpace: 'nowrap',
+            background: `${t.accent}0e`,
+            borderBottom: `1px solid ${t.accent}1a`,
+            padding: '7px 0'
+          }}>
+            <div style={{ display: 'inline-flex', gap: 22, fontSize: 16, animation: 'kt-marquee 60s linear infinite' }}>
+              {[...tile, ...tile].map((f, i) => <span key={i}>{f}</span>)}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       <div style={{ padding: '16px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
@@ -414,7 +419,7 @@ function KnockoutProgress({ currentStage, theme: t, flags = [], nextMatch }) {
               <div style={{ width: 1, height: 32, background: t.bg4 }} />
               <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: 10, color: t.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Kick-off za</div>
-                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Space Grotesk, monospace', color: '#c9884c' }}>{cdText}</div>
+                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Space Grotesk, monospace', color: t.accent }}>{cdText}</div>
               </div>
             </div>
           )}
