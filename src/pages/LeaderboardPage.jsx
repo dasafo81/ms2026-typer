@@ -4,6 +4,8 @@ import { usePlayer } from '../hooks/usePlayer'
 import { useTheme } from '../hooks/useTheme'
 import { STAGE_PROGRESS } from '../lib/theme'
 import { flagFor } from '../lib/flags'
+import { format } from 'date-fns'
+import { pl } from 'date-fns/locale'
 
 // Łączne punkty za typ: wynik + awans + karne + dogrywka
 function totalPredPoints(p) {
@@ -211,6 +213,7 @@ export default function LeaderboardPage() {
 
   return (
     <div>
+      {!loading && <KaringtonyExpress rows={rows} stats={stats} allPreds={allPreds} nextMatch={nextMatch} currentStage={currentStage} playerCount={rows.length} />}
       {isKnockout && <KnockoutProgress currentStage={currentStage} theme={t} flags={knockoutFlags} nextMatch={nextMatch} />}
 
       <div style={{ marginBottom: 24 }}>
@@ -327,6 +330,139 @@ export default function LeaderboardPage() {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// ===== KARINGTONY EXPRESS — poranna gazeta ligi =====
+// Nagłówek dnia generowany regułami z danych. Zwinięta do paska,
+// auto-rozwija się raz dziennie (localStorage).
+
+function buildEdition({ rows, stats, allPreds, nextMatch, currentStage }) {
+  const sorted = [...rows].sort((a, b) => Number(b.total_points) - Number(a.total_points))
+  const leader = sorted[0]
+  const second = sorted[1]
+  const since24h = Date.now() - 24 * 60 * 60 * 1000
+
+  // Szalony typ: dokładny wynik z 3+ goli różnicy w ostatnich 24h
+  const crazyHit = allPreds.find(p =>
+    p.points_earned === 3 &&
+    Math.abs((p.matches?.home_score || 0) - (p.matches?.away_score || 0)) >= 3 &&
+    new Date(p.matches?.kickoff_at).getTime() > since24h
+  )
+
+  let headline, subhead, body
+
+  if (stats.unlucky && stats.unlucky.streak >= 2) {
+    const n = stats.unlucky.name.toUpperCase()
+    headline = `${n} ZNOWU PUDŁUJE!`
+    subhead = `${stats.unlucky.streak}. pudło z rzędu. Redakcja pyta: czy to już kryzys, czy dopiero rozgrzewka?`
+    body = `Ostatnie kolejki nie oszczędzają gracza ${stats.unlucky.name} — seria bez punktu rośnie i cała liga to widzi. `
+  } else if (crazyHit) {
+    const n = crazyHit.players?.name?.toUpperCase() || 'KTOŚ'
+    headline = `SZALONY TYP — ${n} WYPALIŁ!`
+    subhead = `Dokładny wynik przy ${Math.abs(crazyHit.matches.home_score - crazyHit.matches.away_score)} golach różnicy. Odwaga popłaca.`
+    body = `${crazyHit.players?.name} wytypował ${crazyHit.pred_home}:${crazyHit.pred_away} i trafił co do gola. `
+  } else if (leader && second && Number(leader.total_points) - Number(second.total_points) <= 1) {
+    headline = `ZAMACH NA TRON!`
+    subhead = `${second.name} traci do lidera zaledwie ${Number(leader.total_points) - Number(second.total_points)} pkt. Każdy mecz może przewrócić tabelę.`
+    body = `Na szczycie robi się ciasno: ${leader.name} (${leader.total_points} pkt) czuje oddech gracza ${second.name} (${second.total_points} pkt) na plecach. `
+  } else if (stats.onFire) {
+    const n = stats.onFire.name.toUpperCase()
+    headline = stats.onFire.name === leader?.name ? `${n} UCIEKA PELETONOWI!` : `${n} GONI CZOŁÓWKĘ!`
+    subhead = `+${stats.onFire.pts} pkt w ostatnich 24 godzinach. Forma, o jakiej inni mogą pomarzyć.`
+    body = `${stats.onFire.name} zgarnia punkty garściami i tabela zaczyna to odczuwać. `
+  } else {
+    headline = `SPOKÓJ PRZED BURZĄ`
+    subhead = `Tabela zamarła w oczekiwaniu. Następna kolejka może wszystko zmienić.`
+    body = `Chwila oddechu w lidze — ale doświadczeni typerzy wiedzą, że to cisza przed sztormem. `
+  }
+
+  // Dopisek o czołówce i najbliższym meczu
+  if (leader && !headline.startsWith('ZAMACH')) {
+    body += `Na szczycie: ${leader.name} z ${leader.total_points} pkt` +
+      (second ? `, za nim ${second.name} (${second.total_points} pkt). ` : '. ')
+  }
+  if (nextMatch) {
+    body += `Dziś na tapecie: ${nextMatch.home_team} – ${nextMatch.away_team}. Typy przyjmujemy do gwizdka.`
+  }
+
+  // Numer wydania: dni od pierwszego rozegranego meczu
+  const kickoffs = allPreds.map(p => new Date(p.matches?.kickoff_at).getTime()).filter(Boolean)
+  const first = kickoffs.length ? Math.min(...kickoffs) : Date.now()
+  const nr = Math.max(1, Math.floor((Date.now() - first) / 86400000) + 1)
+
+  const stageLabel = currentStage ? (STAGE_PROGRESS[currentStage]?.label || '') : 'Faza grupowa'
+
+  return { headline, subhead, body, nr, stageLabel }
+}
+
+export function KaringtonyExpress({ rows, stats, allPreds, nextMatch, currentStage, playerCount }) {
+  const todayKey = new Date().toISOString().slice(0, 10)
+  const [open, setOpen] = useState(() => {
+    try { return localStorage.getItem('karingtony_express_seen') !== todayKey } catch { return true }
+  })
+
+  useEffect(() => {
+    try { localStorage.setItem('karingtony_express_seen', todayKey) } catch {}
+  }, [todayKey])
+
+  if (!rows || rows.length === 0) return null
+
+  let ed, dateStr
+  try {
+    ed = buildEdition({ rows, stats: stats || {}, allPreds: allPreds || [], nextMatch, currentStage })
+    dateStr = format(new Date(), 'EEEE, d MMMM yyyy', { locale: pl })
+  } catch (e) {
+    console.error('KaringtonyExpress:', e)
+    return null
+  }
+
+  if (!open) {
+    return (
+      <div
+        onClick={() => setOpen(true)}
+        style={{
+          background: '#f7f2e8', border: '1px solid #d8cdb4', borderLeft: '4px solid #171310',
+          padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 12,
+          cursor: 'pointer', fontFamily: 'Georgia, serif', marginBottom: 16
+        }}
+      >
+        <span style={{ fontSize: 9, letterSpacing: 2, color: '#a03e2a', fontWeight: 700, textTransform: 'uppercase', flexShrink: 0 }}>Express</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: '#171310', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {ed.headline} {ed.subhead}
+        </span>
+        <span style={{ fontSize: 11, color: '#6a5f4a', flexShrink: 0 }}>rozwiń ▾</span>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ background: '#f7f2e8', border: '1px solid #d8cdb4', fontFamily: 'Georgia, serif', marginBottom: 16 }}>
+      <div style={{ borderBottom: '3px double #171310', padding: '10px 20px 8px', textAlign: 'center', position: 'relative' }}>
+        <span
+          onClick={() => setOpen(false)}
+          style={{ position: 'absolute', right: 12, top: 10, fontSize: 11, color: '#6a5f4a', cursor: 'pointer' }}
+        >zwiń ▴</span>
+        <div style={{ fontSize: 26, fontWeight: 700, color: '#171310', letterSpacing: 3 }}>KARINGTONY EXPRESS</div>
+        <div style={{
+          fontSize: 9, color: '#6a5f4a', letterSpacing: 2, textTransform: 'uppercase',
+          marginTop: 4, borderTop: '1px solid #171310', paddingTop: 4,
+          display: 'flex', justifyContent: 'space-between'
+        }}>
+          <span>Nr {ed.nr}/2026</span>
+          <span>{dateStr} · {ed.stageLabel}</span>
+          <span>Nakład: {playerCount}</span>
+        </div>
+      </div>
+      <div style={{ padding: '14px 20px 16px' }}>
+        <div style={{ fontSize: 28, fontWeight: 700, color: '#171310', textAlign: 'center', lineHeight: 1.1 }}>{ed.headline}</div>
+        <div style={{ fontSize: 13, fontStyle: 'italic', color: '#4a4038', textAlign: 'center', marginTop: 6 }}>{ed.subhead}</div>
+        <div style={{
+          fontSize: 12, lineHeight: 1.6, color: '#2a251d', textAlign: 'justify', marginTop: 10,
+          columnCount: 2, columnGap: 18, columnRule: '1px solid #c8bda0'
+        }}>{ed.body}</div>
+      </div>
     </div>
   )
 }
