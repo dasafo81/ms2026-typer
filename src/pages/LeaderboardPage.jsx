@@ -116,17 +116,24 @@ export default function LeaderboardPage() {
   const { player } = usePlayer()
   const { theme, knockout, currentStage } = useTheme()
   const [knockoutFlags, setKnockoutFlags] = useState([])
+  const [nextMatch, setNextMatch] = useState(null)
 
   // Sprawdź czy jest faza pucharowa na podstawie danych
   const [isKnockout, setIsKnockout] = useState(false)
   useEffect(() => {
-    supabase.from('matches').select('stage, status, home_flag, away_flag').neq('stage', 'group').then(({ data }) => {
+    supabase.from('matches').select('stage, status, kickoff_at, home_team, away_team, home_flag, away_flag').neq('stage', 'group').then(({ data }) => {
       if (data && data.length > 0) {
         setIsKnockout(true)
         const stageKey = currentStage || 'r16'
-        const stageMatches = data.filter(m => m.stage === stageKey)
+        const stageMatches = data.filter(m => m.stage === stageKey && m.home_team && m.home_team !== 'TBD')
         const flags = [...new Set(stageMatches.flatMap(m => [m.home_flag, m.away_flag]).filter(Boolean))]
         setKnockoutFlags(flags)
+        // Najbliższy zaplanowany mecz z prawdziwymi drużynami
+        const now = Date.now()
+        const upcoming = data
+          .filter(m => m.status === 'scheduled' && m.home_team && m.home_team !== 'TBD' && new Date(m.kickoff_at).getTime() > now)
+          .sort((a, b) => new Date(a.kickoff_at) - new Date(b.kickoff_at))
+        setNextMatch(upcoming[0] || null)
       }
     })
   }, [currentStage])
@@ -187,20 +194,9 @@ export default function LeaderboardPage() {
 
   const t = theme
 
-  const leftFlags = knockoutFlags.slice(0, Math.ceil(knockoutFlags.length / 2))
-  const rightFlags = knockoutFlags.slice(Math.ceil(knockoutFlags.length / 2))
-
   return (
-    <div style={{ display: 'flex', gap: 0 }}>
-      {/* Flagi po lewej */}
-      {isKnockout && knockoutFlags.length > 0 && (
-        <div style={{ width: 36, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, paddingTop: 70, opacity: 0.7 }}>
-          {leftFlags.map((f, i) => <span key={i} style={{ fontSize: 20 }}>{f}</span>)}
-        </div>
-      )}
-
-      <div style={{ flex: 1, minWidth: 0, padding: isKnockout && knockoutFlags.length > 0 ? '0 10px' : 0 }}>
-      {isKnockout && <KnockoutProgress currentStage={currentStage} theme={t} />}
+    <div>
+      {isKnockout && <KnockoutProgress currentStage={currentStage} theme={t} flags={knockoutFlags} nextMatch={nextMatch} />}
 
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 4, color: t.text }}>🏆 Tabela rankingowa</h1>
@@ -316,84 +312,147 @@ export default function LeaderboardPage() {
           ))}
         </div>
       )}
-      </div>
-
-      {/* Flagi po prawej */}
-      {isKnockout && knockoutFlags.length > 0 && (
-        <div style={{ width: 36, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, paddingTop: 70, opacity: 0.7 }}>
-          {rightFlags.map((f, i) => <span key={i} style={{ fontSize: 20 }}>{f}</span>)}
-        </div>
-      )}
     </div>
   )
 }
 
-function KnockoutProgress({ currentStage, theme: t }) {
+function useCountdown(targetIso) {
+  const [left, setLeft] = useState(null)
+  useEffect(() => {
+    if (!targetIso) { setLeft(null); return }
+    const target = new Date(targetIso).getTime()
+    const tick = () => setLeft(Math.max(0, Math.floor((target - Date.now()) / 1000)))
+    tick()
+    const id = setInterval(tick, 1000)
+    return () => clearInterval(id)
+  }, [targetIso])
+  return left
+}
+
+function fmtCountdown(secs) {
+  if (secs === null || secs === undefined) return null
+  const d = Math.floor(secs / 86400)
+  const h = Math.floor((secs % 86400) / 3600)
+  const m = Math.floor((secs % 3600) / 60)
+  const s = secs % 60
+  if (d > 0) return `${d}d ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+function KnockoutProgress({ currentStage, theme: t, flags = [], nextMatch }) {
   const stages = ['r32', 'r16', 'qf', 'sf', 'final']
   const currentIdx = stages.indexOf(currentStage)
   const info = STAGE_PROGRESS[currentStage]
+  const countdown = useCountdown(nextMatch?.kickoff_at)
+  const cdText = fmtCountdown(countdown)
 
   return (
     <div style={{
-      marginBottom: 20, padding: '16px 20px',
+      marginBottom: 20,
       background: `linear-gradient(135deg, ${t.accent}14, ${t.accent}08)`,
       border: `1px solid ${t.accent}25`,
-      borderRadius: 12
+      borderRadius: 14,
+      overflow: 'hidden'
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <span style={{ fontSize: 22 }}>{info?.icon || '🏆'}</span>
-        <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: t.accent }}>{info?.label || 'Faza pucharowa'}</div>
-          <div style={{ fontSize: 11, color: t.text3, marginTop: 2 }}>Karingtony World Cup League 2026 · awans +2 pkt · karne +1 pkt</div>
+      <style>{`
+        @keyframes kt-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        @keyframes kt-pulse { from { box-shadow: 0 0 0 0 ${t.accent}66; } to { box-shadow: 0 0 0 10px transparent; } }
+      `}</style>
+
+      {/* Marquee flag */}
+      {flags.length > 0 && (
+        <div style={{
+          overflow: 'hidden', whiteSpace: 'nowrap',
+          background: `${t.accent}0e`,
+          borderBottom: `1px solid ${t.accent}1a`,
+          padding: '7px 0'
+        }}>
+          <div style={{ display: 'inline-flex', gap: 22, fontSize: 16, animation: 'kt-marquee 36s linear infinite' }}>
+            {[...flags, ...flags].map((f, i) => <span key={i}>{f}</span>)}
+          </div>
         </div>
-      </div>
+      )}
 
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        {stages.map((s, i) => {
-          const isPast = i < currentIdx
-          const isCurrent = i === currentIdx
-          const isLast = i === stages.length - 1
-          const sp = STAGE_PROGRESS[s]
-
-          return (
-            <div key={s} style={{ display: 'flex', alignItems: 'center', flex: isLast ? 0 : 1 }}>
-              <div style={{
-                width: isCurrent ? 32 : 22, height: isCurrent ? 32 : 22,
-                borderRadius: '50%',
-                background: isCurrent ? t.accent : isPast ? t.accent + '88' : t.bg3,
-                border: !isPast && !isCurrent ? `1px solid ${t.bg4}` : 'none',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: isCurrent ? 14 : 10, fontWeight: 700,
-                color: isPast || isCurrent ? '#fff' : t.text3,
-                flexShrink: 0,
-                boxShadow: isCurrent ? `0 0 14px ${t.accent}40` : 'none'
-              }}>
-                {isCurrent ? sp.icon : isPast ? '✓' : (isLast ? '🏆' : i + 1)}
-              </div>
-              {!isLast && (
-                <div style={{ flex: 1, height: 2, minWidth: 8, background: isPast ? t.accent + '66' : t.bg4, borderRadius: 1 }} />
-              )}
+      <div style={{ padding: '16px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 22 }}>{info?.icon || '🏆'}</span>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: t.accent }}>{info?.label || 'Faza pucharowa'}</div>
+              <div style={{ fontSize: 11, color: t.text3, marginTop: 2 }}>awans +2 pkt · karne +1 pkt</div>
             </div>
-          )
-        })}
-      </div>
+          </div>
 
-      <div style={{ display: 'flex', marginTop: 6 }}>
-        {stages.map((s, i) => {
-          const isCurrent = i === currentIdx
-          const isLast = i === stages.length - 1
-          return (
-            <div key={s} style={{ flex: isLast ? 0 : 1 }}>
-              <div style={{
-                fontSize: 9, color: isCurrent ? t.accent : t.text3,
-                fontWeight: isCurrent ? 700 : 400,
-                width: isCurrent ? 32 : 22, textAlign: 'center'
-              }}>
-                {STAGE_PROGRESS[s].short}
+          {/* Najbliższy mecz + countdown */}
+          {nextMatch && cdText && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 14,
+              background: t.bg2, border: `1px solid ${t.bg4}`,
+              borderRadius: 10, padding: '8px 16px'
+            }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: t.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Najbliższy mecz</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>
+                  {nextMatch.home_flag} {nextMatch.home_team} – {nextMatch.away_team} {nextMatch.away_flag}
+                </div>
+              </div>
+              <div style={{ width: 1, height: 32, background: t.bg4 }} />
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 10, color: t.text3, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2 }}>Kick-off za</div>
+                <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'Space Grotesk, monospace', color: '#c9884c' }}>{cdText}</div>
               </div>
             </div>
-          )
-        })}
+          )}
+        </div>
+
+        {/* Progress bar */}
+        <div style={{ display: 'flex', alignItems: 'center', marginTop: 16 }}>
+          {stages.map((s, i) => {
+            const isPast = i < currentIdx
+            const isCurrent = i === currentIdx
+            const isLast = i === stages.length - 1
+            const sp = STAGE_PROGRESS[s]
+
+            return (
+              <div key={s} style={{ display: 'flex', alignItems: 'center', flex: isLast ? 0 : 1 }}>
+                <div style={{
+                  width: isCurrent ? 30 : 22, height: isCurrent ? 30 : 22,
+                  borderRadius: '50%',
+                  background: isCurrent ? t.accent : isPast ? t.accent + '88' : t.bg3,
+                  border: !isPast && !isCurrent ? `1px solid ${t.bg4}` : 'none',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: isCurrent ? 13 : 10, fontWeight: 700,
+                  color: isPast || isCurrent ? '#fff' : t.text3,
+                  flexShrink: 0,
+                  animation: isCurrent ? 'kt-pulse 2s ease-out infinite' : 'none'
+                }}>
+                  {isCurrent ? sp.icon : isPast ? '✓' : (isLast ? '🏆' : i + 1)}
+                </div>
+                {!isLast && (
+                  <div style={{ flex: 1, height: 2, minWidth: 8, background: isPast ? t.accent + '66' : t.bg4, borderRadius: 1 }} />
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        <div style={{ display: 'flex', marginTop: 5 }}>
+          {stages.map((s, i) => {
+            const isCurrent = i === currentIdx
+            const isLast = i === stages.length - 1
+            return (
+              <div key={s} style={{ flex: isLast ? 0 : 1 }}>
+                <div style={{
+                  fontSize: 9, color: isCurrent ? t.accent : t.text3,
+                  fontWeight: isCurrent ? 700 : 400,
+                  width: isCurrent ? 30 : 22, textAlign: 'center'
+                }}>
+                  {STAGE_PROGRESS[s].short}
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
