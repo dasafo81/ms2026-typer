@@ -11,7 +11,7 @@ export function ThemeProvider({ children }) {
 
   useEffect(() => {
     async function check() {
-      const { data } = await supabase.from('matches').select('stage, status, kickoff_at')
+      const { data } = await supabase.from('matches').select('stage, status, kickoff_at, home_team')
       const ko = isKnockoutPhase(data || [])
       setKnockout(ko)
       setCurrentStage(currentKnockoutStage(data || []))
