@@ -3,17 +3,29 @@ export function isKnockoutPhase(matches) {
   return matches.some(m => m.stage && m.stage !== 'group' && m.stage !== 'GROUP_STAGE')
 }
 
+const STAGE_RAW = {
+  r32: 'r32', LAST_32: 'r32', ROUND_OF_32: 'r32',
+  r16: 'r16', LAST_16: 'r16', ROUND_OF_16: 'r16',
+  qf: 'qf', QUARTER_FINALS: 'qf', QUARTER_FINAL: 'qf',
+  sf: 'sf', SEMI_FINALS: 'sf', SEMI_FINAL: 'sf',
+  final: 'final', FINAL: 'final'
+}
+
 export function currentKnockoutStage(matches) {
   if (!matches || matches.length === 0) return null
   const ORDER = ['r32', 'r16', 'qf', 'sf', 'final']
-  // Najnowsza runda z prawdziwymi drużynami = aktualna
-  // Bo drużyny pojawiają się w kolejnej rundzie dopiero po zakończeniu poprzedniej
-  let current = null
+  // Najwcześniejsza runda, która ma jeszcze niedograne mecze z prawdziwymi drużynami.
+  // Jak wszystkie dograne — ostatnia z prawdziwymi drużynami.
+  let last = null
   for (const s of ORDER) {
-    const real = matches.filter(m => m.stage === s && m.home_team && m.home_team !== 'TBD')
-    if (real.length > 0) current = s
+    const real = matches.filter(m =>
+      STAGE_RAW[m.stage] === s && m.home_team && m.home_team !== 'TBD'
+    )
+    if (real.length === 0) continue
+    last = s
+    if (real.some(m => m.status === 'scheduled' || m.status === 'live')) return s
   }
-  return current
+  return last
 }
 
 export const STAGE_PROGRESS = {
@@ -33,10 +45,10 @@ export const THEME = {
     headerBg: '#cce0f5', headerBorder: '#c9a84c',
   },
   knockout: {
-    bg: '#f7f9fb', bg2: '#ffffff', bg3: '#eef4f2', bg4: '#d6e6e0',
-    border: '#d6e6e022', border2: '#d6e6e044',
-    text: '#1a2e2a', text2: '#5a7a72', text3: '#8aaa9e',
-    accent: '#0d7b6b', accent2: '#3a9e8a', accent3: '#6bc4b0',
-    headerBg: '#e8f5f0', headerBorder: '#0d7b6b',
+    bg: '#fdf6ec', bg2: '#ffffff', bg3: '#faeeda', bg4: '#f0dcb8',
+    border: '#e8d5b022', border2: '#e8d5b044',
+    text: '#171310', text2: '#4a4038', text3: '#9a866c',
+    accent: '#d97706', accent2: '#f59e0b', accent3: '#fbbf24',
+    headerBg: '#faeeda', headerBorder: '#d97706',
   }
 }
