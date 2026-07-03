@@ -1,4 +1,27 @@
-export function isKnockoutPhase() { return false }
+export function isKnockoutPhase(matches) {
+  if (!matches || matches.length === 0) return false
+  return matches.some(m => m.stage && m.stage !== 'group' && m.stage !== 'GROUP_STAGE')
+}
+
+export function currentKnockoutStage(matches) {
+  if (!matches || matches.length === 0) return null
+  const ORDER = ['r32', 'r16', 'qf', 'sf', 'final']
+  for (let i = ORDER.length - 1; i >= 0; i--) {
+    const s = ORDER[i]
+    const sm = matches.filter(m => m.stage === s)
+    if (sm.some(m => m.status === 'live' || m.status === 'scheduled')) return s
+    if (sm.some(m => m.status === 'finished')) return s
+  }
+  return null
+}
+
+export const STAGE_PROGRESS = {
+  r32:   { label: '1/16 finału', short: '1/16', icon: '⚔️' },
+  r16:   { label: '1/8 finału',  short: '1/8',  icon: '🗡️' },
+  qf:    { label: '1/4 finału',  short: '1/4',  icon: '🔥' },
+  sf:    { label: '1/2 finału',  short: '1/2',  icon: '⚡' },
+  final: { label: 'Finał',       short: 'Finał', icon: '🏆' },
+}
 
 export const THEME = {
   group: {
@@ -9,10 +32,10 @@ export const THEME = {
     headerBg: '#cce0f5', headerBorder: '#c9a84c',
   },
   knockout: {
-    bg: '#eef6ff', bg2: '#eef6ff', bg3: '#cce0f5', bg4: '#bbcfe8',
-    border: '#c9a84c22', border2: '#c9a84c44',
-    text: '#0d1e35', text2: '#2a4a70', text3: '#6a8aaa',
-    accent: '#c9a84c', accent2: '#e8c96a', accent3: '#f5d87a',
-    headerBg: '#cce0f5', headerBorder: '#c9a84c',
+    bg: '#f7f9fb', bg2: '#ffffff', bg3: '#eef4f2', bg4: '#d6e6e0',
+    border: '#d6e6e022', border2: '#d6e6e044',
+    text: '#1a2e2a', text2: '#5a7a72', text3: '#8aaa9e',
+    accent: '#0d7b6b', accent2: '#3a9e8a', accent3: '#6bc4b0',
+    headerBg: '#e8f5f0', headerBorder: '#0d7b6b',
   }
 }
