@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { usePlayer } from '../hooks/usePlayer'
 import { useTheme } from '../hooks/useTheme'
+import { flagFor } from '../lib/flags'
 
 const STAGES = ['r32', 'r16', 'qf', 'sf', 'final']
 const STAGE_LABELS = {
@@ -11,6 +12,16 @@ const STAGE_LABELS = {
   sf: '1/2 finału',
   final: 'Finał'
 }
+
+// Surowe wartości stage z API -> krótkie klucze drabinki
+const STAGE_NORMALIZE = {
+  r32: 'r32', LAST_32: 'r32', ROUND_OF_32: 'r32',
+  r16: 'r16', LAST_16: 'r16', ROUND_OF_16: 'r16',
+  qf: 'qf', QUARTER_FINALS: 'qf', QUARTER_FINAL: 'qf',
+  sf: 'sf', SEMI_FINALS: 'sf', SEMI_FINAL: 'sf',
+  final: 'final', FINAL: 'final'
+}
+const normStage = (s) => STAGE_NORMALIZE[s] || null
 
 // Wymiary karty i kolumny
 const CARD_H = 72      // wysokość karty meczu (px)
@@ -38,7 +49,7 @@ export default function BracketPage() {
 
   async function load() {
     const [{ data: matchData }, { data: predData }] = await Promise.all([
-      supabase.from('matches').select('*').neq('stage', 'group').order('bracket_position', { nullsFirst: false }),
+      supabase.from('matches').select('*').order('bracket_position', { nullsFirst: false }),
       player
         ? supabase.from('predictions').select('*').eq('player_id', player.id)
         : Promise.resolve({ data: [] })
@@ -52,8 +63,33 @@ export default function BracketPage() {
 
   if (loading) return <div style={{ color: theme.text2, textAlign: 'center', padding: 40 }}>Ładowanie...</div>
 
+  // Efektywna runda meczu: stage, a jak nierozpoznany — group_name
+  // (siatka bezpieczeństwa: sync potrafił wrzucić mecz pucharowy ze stage='group')
+  const effStage = (m) => normStage(m.stage) || normStage(m.group_name) || null
+
   const byStage = {}
-  for (const s of STAGES) byStage[s] = matches.filter(m => m.stage === s)
+  for (const s of STAGES) byStage[s] = matches.filter(m => effStage(m) === s)
+
+  // Rozmieszczenie w slotach: mecze z bracket_position idą na swoje miejsce,
+  // pozostałe (position null/duplikat) wypełniają wolne sloty wg kickoff_at.
+  const slotted = {}
+  for (const s of STAGES) {
+    const count = Math.pow(2, 4 - STAGES.indexOf(s))
+    const slots = Array(count).fill(null)
+    const rest = []
+    for (const m of byStage[s]) {
+      const pos = m.bracket_position
+      if (pos >= 1 && pos <= count && !slots[pos - 1]) slots[pos - 1] = m
+      else rest.push(m)
+    }
+    rest.sort((a, b) => new Date(a.kickoff_at) - new Date(b.kickoff_at))
+    for (const m of rest) {
+      const free = slots.findIndex(x => x === null)
+      if (free === -1) break
+      slots[free] = m
+    }
+    slotted[s] = slots
+  }
 
   // Całkowita wysokość SVG = 16 slotów × CARD_H (runda r32 wyznacza wysokość)
   const totalH = 16 * CARD_H
@@ -137,8 +173,7 @@ export default function BracketPage() {
                 </div>
 
                 {Array.from({ length: count }).map((_, i) => {
-                  // Slot i (0-indeksowany) odpowiada bracket_position i+1
-                  const match = stageMatches.find(m => m.bracket_position === i + 1) || null
+                  const match = slotted[stage][i] || null
                   const pred = match ? predictions[match.id] : null
                   const top = i * slot + topOffset
 
@@ -168,7 +203,7 @@ export default function BracketPage() {
 
       {/* Punkty pucharowe gracza */}
       {player && (() => {
-        const kMatches = matches
+        const kMatches = matches.filter(m => effStage(m))
         const totalByKey = (key) => kMatches.reduce((s, m) => s + ((predictions[m.id]?.[key]) || 0), 0)
         const grand = totalByKey('points_earned') + totalByKey('pts_advancement') + totalByKey('pts_extra_time') + totalByKey('pts_penalty')
         return (
@@ -266,7 +301,7 @@ function BracketCard({ match, prediction, theme, isFinal }) {
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0
         }}>
           {isLive && <span style={{ fontSize: 8, color: '#e24b4a', fontWeight: 700, marginRight: 4 }}>●</span>}
-          {match.home_team}
+          {flagFor(match.home_team, match.home_flag)} {match.home_team}
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, marginLeft: 4 }}>
           {totalPts > 0 && isFinished && (
@@ -295,7 +330,7 @@ function BracketCard({ match, prediction, theme, isFinal }) {
           color: teamColor(match.away_team),
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0
         }}>
-          {match.away_team}
+          {flagFor(match.away_team, match.away_flag)} {match.away_team}
         </span>
         {(isFinished || isLive) && (
           <span style={{ fontSize: 12, fontWeight: 800, color: theme.accent, marginLeft: 6, flexShrink: 0 }}>

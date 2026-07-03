@@ -4,6 +4,7 @@ import { usePlayer } from '../hooks/usePlayer'
 import { useTheme } from '../hooks/useTheme'
 import { format } from 'date-fns'
 import { pl } from 'date-fns/locale'
+import { flagFor } from '../lib/flags'
 
 // Jeden poprawny schemat. Krótkie klucze i surowe wartości z API
 // mapują się na TEN SAM polski string, więc duplikaty się scalają.
@@ -229,7 +230,7 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
 
         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', minWidth: 200 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: theme.text, textAlign: 'right', minWidth: 80 }}>
-            {match.home_flag} {match.home_team}
+            {flagFor(match.home_team, match.home_flag)} {match.home_team}
           </span>
           {isFinished || isLive ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: theme.bg3, borderRadius: 8, padding: '6px 14px' }}>
@@ -242,7 +243,7 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
             <div style={{ color: theme.text3, fontSize: 20, fontWeight: 700 }}>vs</div>
           )}
           <span style={{ fontSize: 14, fontWeight: 600, color: theme.text, minWidth: 80 }}>
-            {match.away_team} {match.away_flag}
+            {match.away_team} {flagFor(match.away_team, match.away_flag)}
           </span>
         </div>
 
