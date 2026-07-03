@@ -5,7 +5,7 @@ import { useEffect } from 'react'
 
 export default function Layout() {
   const { player, loading, logout } = usePlayer()
-  const { theme, knockout } = useTheme()
+  const { theme, knockout, currentStage } = useTheme()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -108,7 +108,7 @@ export default function Layout() {
         letterSpacing: 1,
         fontFamily: 'Georgia, serif'
       }}>
-        KARINGTONY WORLD CUP LEAGUE · 2026
+        KARINGTONY WORLD CUP LEAGUE · 2026{knockout && currentStage ? ` · ${({r32:'1/16 FINAŁU',r16:'1/8 FINAŁU',qf:'1/4 FINAŁU',sf:'PÓŁFINAŁ',final:'FINAŁ'})[currentStage] || ''}` : ''}
       </footer>
     </div>
   )
