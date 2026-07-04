@@ -120,6 +120,7 @@ export default function LeaderboardPage() {
   const { theme, knockout, currentStage } = useTheme()
   const [knockoutFlags, setKnockoutFlags] = useState([])
   const [nextMatch, setNextMatch] = useState(null)
+  const [prevOrder, setPrevOrder] = useState([])
 
   // Sprawdź czy jest faza pucharowa na podstawie danych
   const [isKnockout, setIsKnockout] = useState(false)
@@ -197,6 +198,25 @@ export default function LeaderboardPage() {
     const unluckyEntry = Object.entries(streaks).sort((a, b) => b[1] - a[1])[0]
     const unlucky = unluckyEntry && unluckyEntry[1] >= 2 ? { name: unluckyEntry[0], streak: unluckyEntry[1] } : null
     setStats({ onFire, sniper, unlucky })
+
+    // Poprzednia kolejność — daily_points: suma punktów z dnia wcześniejszego niż ostatni
+    try {
+      const { data: dpData } = await supabase.from('daily_points').select('name, match_date, day_points').order('match_date')
+      if (dpData && dpData.length > 0) {
+        const dates = [...new Set(dpData.map(d => d.match_date))].sort()
+        // Bierzemy kumulację do przedostatniego dnia meczowego
+        const cutoff = dates.length >= 2 ? dates[dates.length - 2] : null
+        if (cutoff) {
+          const prevPts = {}
+          for (const d of dpData) {
+            if (d.match_date <= cutoff) prevPts[d.name] = (prevPts[d.name] || 0) + Number(d.day_points)
+          }
+          const prevSorted = Object.entries(prevPts).sort((a, b) => b[1] - a[1]).map(e => e[0])
+          setPrevOrder(prevSorted)
+        }
+      }
+    } catch (e) { console.error('prevOrder:', e) }
+
     setLoading(false)
   }
 
@@ -213,7 +233,7 @@ export default function LeaderboardPage() {
 
   return (
     <div>
-      {!loading && <KaringtonyExpress rows={rows} stats={stats} allPreds={allPreds} nextMatch={nextMatch} currentStage={currentStage} playerCount={rows.length} />}
+      {!loading && <KaringtonyExpress rows={rows} stats={stats} allPreds={allPreds} nextMatch={nextMatch} currentStage={currentStage} playerCount={rows.length} prevOrder={prevOrder} />}
       {isKnockout && <KnockoutProgress currentStage={currentStage} theme={t} flags={knockoutFlags} nextMatch={nextMatch} />}
 
       <div style={{ marginBottom: 24 }}>
@@ -338,57 +358,64 @@ export default function LeaderboardPage() {
 // Nagłówek dnia generowany regułami z danych. Zwinięta do paska,
 // auto-rozwija się raz dziennie (localStorage).
 
-function buildEdition({ rows, stats, allPreds, nextMatch, currentStage }) {
+function buildEdition({ rows, stats, allPreds, nextMatch, currentStage, prevOrder }) {
   const sorted = [...rows].sort((a, b) => Number(b.total_points) - Number(a.total_points))
   const leader = sorted[0]
   const second = sorted[1]
-  const since24h = Date.now() - 24 * 60 * 60 * 1000
+  const gap = leader && second ? Number(leader.total_points) - Number(second.total_points) : 0
 
-  // Szalony typ: dokładny wynik z 3+ goli różnicy w ostatnich 24h
-  const crazyHit = allPreds.find(p =>
-    p.points_earned === 3 &&
-    Math.abs((p.matches?.home_score || 0) - (p.matches?.away_score || 0)) >= 3 &&
-    new Date(p.matches?.kickoff_at).getTime() > since24h
-  )
-
-  let headline, subhead, body
-
-  if (stats.unlucky && stats.unlucky.streak >= 2) {
-    const n = stats.unlucky.name.toUpperCase()
-    headline = `${n} ZNOWU PUDŁUJE!`
-    subhead = `${stats.unlucky.streak}. pudło z rzędu. Redakcja pyta: czy to już kryzys, czy dopiero rozgrzewka?`
-    body = `Ostatnie kolejki nie oszczędzają gracza ${stats.unlucky.name} — seria bez punktu rośnie i cała liga to widzi. `
-  } else if (crazyHit) {
-    const n = crazyHit.players?.name?.toUpperCase() || 'KTOŚ'
-    headline = `SZALONY TYP — ${n} WYPALIŁ!`
-    subhead = `Dokładny wynik przy ${Math.abs(crazyHit.matches.home_score - crazyHit.matches.away_score)} golach różnicy. Odwaga popłaca.`
-    body = `${crazyHit.players?.name} wytypował ${crazyHit.pred_home}:${crazyHit.pred_away} i trafił co do gola. `
-  } else if (leader && second && Number(leader.total_points) - Number(second.total_points) <= 1) {
-    headline = `ZAMACH NA TRON!`
-    subhead = `${second.name} traci do lidera zaledwie ${Number(leader.total_points) - Number(second.total_points)} pkt. Każdy mecz może przewrócić tabelę.`
-    body = `Na szczycie robi się ciasno: ${leader.name} (${leader.total_points} pkt) czuje oddech gracza ${second.name} (${second.total_points} pkt) na plecach. `
-  } else if (stats.onFire) {
-    const n = stats.onFire.name.toUpperCase()
-    headline = stats.onFire.name === leader?.name ? `${n} UCIEKA PELETONOWI!` : `${n} GONI CZOŁÓWKĘ!`
-    subhead = `+${stats.onFire.pts} pkt w ostatnich 24 godzinach. Forma, o jakiej inni mogą pomarzyć.`
-    body = `${stats.onFire.name} zgarnia punkty garściami i tabela zaczyna to odczuwać. `
+  // === NAGŁÓWEK — zawsze o liderze ===
+  let headline, subhead
+  if (gap === 0 && second) {
+    headline = `${leader.name.toUpperCase()} I ${second.name.toUpperCase()} ŁEBEK W ŁEBEK!`
+    subhead = `Obaj mają ${leader.total_points} pkt. Decyduje każdy kolejny typ.`
+  } else if (gap <= 2 && second) {
+    headline = `${leader.name.toUpperCase()} NA CZELE — ALE ${second.name.toUpperCase()} DYSZY W KARK!`
+    subhead = `Zaledwie ${gap} pkt przewagi. Jeden dokładny typ i fotel lidera zmienia właściciela.`
+  } else if (gap <= 5 && second) {
+    headline = `${leader.name.toUpperCase()} PROWADZI Z ${leader.total_points} PKT!`
+    subhead = `${gap} punktów nad ${second.name}. Lider kontroluje sytuację, ale nic nie jest przesądzone.`
   } else {
-    headline = `SPOKÓJ PRZED BURZĄ`
-    subhead = `Tabela zamarła w oczekiwaniu. Następna kolejka może wszystko zmienić.`
-    body = `Chwila oddechu w lidze — ale doświadczeni typerzy wiedzą, że to cisza przed sztormem. `
+    headline = `${(leader?.name || 'LIDER').toUpperCase()} UCIEKA RYWALOM!`
+    subhead = `${leader?.total_points || '?'} pkt i ${gap} przewagi. Peleton traci kontakt.`
   }
 
-  // Dopisek o czołówce i najbliższym meczu
-  if (leader && !headline.startsWith('ZAMACH')) {
-    body += `Na szczycie: ${leader.name} z ${leader.total_points} pkt` +
-      (second ? `, za nim ${second.name} (${second.total_points} pkt). ` : '. ')
+  // === BODY — zmiany pozycji w tabeli ===
+  let body = ''
+
+  // Porównanie z poprzednią kolejnością (prevOrder z daily_points)
+  if (prevOrder && prevOrder.length > 0) {
+    const moves = sorted.map((r, newPos) => {
+      const oldPos = prevOrder.indexOf(r.name)
+      if (oldPos === -1) return null
+      const diff = oldPos - newPos // >0 = awans, <0 = spadek
+      if (diff === 0) return null
+      return { name: r.name, newPos: newPos + 1, diff }
+    }).filter(Boolean)
+
+    const ups = moves.filter(m => m.diff > 0).sort((a, b) => b.diff - a.diff)
+    const downs = moves.filter(m => m.diff < 0).sort((a, b) => a.diff - b.diff)
+
+    if (ups.length > 0) {
+      body += ups.map(m => `${m.name} awansuje na ${m.newPos}. miejsce` + (m.diff >= 2 ? ` (skok o ${m.diff}!)` : '')).join(', ') + '. '
+    }
+    if (downs.length > 0) {
+      body += downs.map(m => `${m.name} spada na ${m.newPos}. pozycję`).join(', ') + '. '
+    }
+    if (ups.length === 0 && downs.length === 0) {
+      body += 'Tabela bez zmian — rywalizacja zamiera przed kolejną kolejką. '
+    }
+  } else {
+    // Fallback: opis czołówki
+    body += sorted.slice(0, 4).map((r, i) => `${i + 1}. ${r.name} (${r.total_points} pkt)`).join(', ') + '. '
   }
+
   if (nextMatch) {
-    body += `Dziś na tapecie: ${nextMatch.home_team} – ${nextMatch.away_team}. Typy przyjmujemy do gwizdka.`
+    body += `Następny mecz: ${nextMatch.home_flag || ''} ${nextMatch.home_team} – ${nextMatch.away_team} ${nextMatch.away_flag || ''}`.trim() + '.'
   }
 
-  // Numer wydania: dni od pierwszego rozegranego meczu
-  const kickoffs = allPreds.map(p => new Date(p.matches?.kickoff_at).getTime()).filter(Boolean)
+  // Numer wydania
+  const kickoffs = (allPreds || []).map(p => new Date(p.matches?.kickoff_at).getTime()).filter(Boolean)
   const first = kickoffs.length ? Math.min(...kickoffs) : Date.now()
   const nr = Math.max(1, Math.floor((Date.now() - first) / 86400000) + 1)
 
@@ -397,7 +424,7 @@ function buildEdition({ rows, stats, allPreds, nextMatch, currentStage }) {
   return { headline, subhead, body, nr, stageLabel }
 }
 
-export function KaringtonyExpress({ rows, stats, allPreds, nextMatch, currentStage, playerCount }) {
+export function KaringtonyExpress({ rows, stats, allPreds, nextMatch, currentStage, playerCount, prevOrder }) {
   const todayKey = new Date().toISOString().slice(0, 10)
   const [open, setOpen] = useState(() => {
     try { return localStorage.getItem('karingtony_express_seen') !== todayKey } catch { return true }
@@ -411,7 +438,7 @@ export function KaringtonyExpress({ rows, stats, allPreds, nextMatch, currentSta
 
   let ed, dateStr
   try {
-    ed = buildEdition({ rows, stats: stats || {}, allPreds: allPreds || [], nextMatch, currentStage })
+    ed = buildEdition({ rows, stats: stats || {}, allPreds: allPreds || [], nextMatch, currentStage, prevOrder: prevOrder || [] })
     dateStr = format(new Date(), 'EEEE, d MMMM yyyy', { locale: pl })
   } catch (e) {
     console.error('KaringtonyExpress:', e)
