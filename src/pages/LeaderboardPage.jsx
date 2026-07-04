@@ -120,6 +120,7 @@ export default function LeaderboardPage() {
   const { theme, knockout, currentStage } = useTheme()
   const [knockoutFlags, setKnockoutFlags] = useState([])
   const [nextMatch, setNextMatch] = useState(null)
+  const [upcomingMatches, setUpcomingMatches] = useState([])
   const [prevOrder, setPrevOrder] = useState([])
 
   // Sprawdź czy jest faza pucharowa na podstawie danych
@@ -153,6 +154,9 @@ export default function LeaderboardPage() {
         .sort((a, b) => new Date(a.kickoff_at) - new Date(b.kickoff_at))
       const nm = upcoming[0] || null
       setNextMatch(nm ? { ...nm, home_flag: flagOf(nm.home_team, nm.home_flag), away_flag: flagOf(nm.away_team, nm.away_flag) } : null)
+      setUpcomingMatches(upcoming.slice(0, 2).map(m => ({
+        ...m, home_flag: flagOf(m.home_team, m.home_flag), away_flag: flagOf(m.away_team, m.away_flag)
+      })))
     })
   }, [currentStage])
 
@@ -233,7 +237,7 @@ export default function LeaderboardPage() {
 
   return (
     <div>
-      {!loading && <KaringtonyExpress rows={rows} stats={stats} allPreds={allPreds} nextMatch={nextMatch} currentStage={currentStage} playerCount={rows.length} prevOrder={prevOrder} />}
+      {!loading && <KaringtonyExpress rows={rows} stats={stats} allPreds={allPreds} nextMatch={nextMatch} upcomingMatches={upcomingMatches} currentStage={currentStage} playerCount={rows.length} prevOrder={prevOrder} />}
       {isKnockout && <KnockoutProgress currentStage={currentStage} theme={t} flags={knockoutFlags} nextMatch={nextMatch} />}
 
       <div style={{ marginBottom: 24 }}>
@@ -358,10 +362,11 @@ export default function LeaderboardPage() {
 // Nagłówek dnia generowany regułami z danych. Zwinięta do paska,
 // auto-rozwija się raz dziennie (localStorage).
 
-function buildEdition({ rows, stats, allPreds, nextMatch, currentStage, prevOrder }) {
+function buildEdition({ rows, stats, allPreds, nextMatch, upcomingMatches, currentStage, prevOrder }) {
   const sorted = [...rows].sort((a, b) => Number(b.total_points) - Number(a.total_points))
   const leader = sorted[0]
   const second = sorted[1]
+  const third = sorted[2]
   const gap = leader && second ? Number(leader.total_points) - Number(second.total_points) : 0
 
   // === NAGŁÓWEK — zawsze o liderze ===
@@ -374,57 +379,103 @@ function buildEdition({ rows, stats, allPreds, nextMatch, currentStage, prevOrde
     subhead = `Zaledwie ${gap} pkt przewagi. Jeden dokładny typ i fotel lidera zmienia właściciela.`
   } else if (gap <= 5 && second) {
     headline = `${leader.name.toUpperCase()} PROWADZI Z ${leader.total_points} PKT!`
-    subhead = `${gap} punktów nad ${second.name}. Lider kontroluje sytuację, ale nic nie jest przesądzone.`
+    subhead = `${gap} punktów nad ${second.name}. Lider kontroluje, ale peleton nie odpuszcza.`
   } else {
     headline = `${(leader?.name || 'LIDER').toUpperCase()} UCIEKA RYWALOM!`
     subhead = `${leader?.total_points || '?'} pkt i ${gap} przewagi. Peleton traci kontakt.`
   }
 
-  // === BODY — zmiany pozycji w tabeli ===
+  // === BODY — narracyjny styl z humorem ===
   let body = ''
 
-  // Porównanie z poprzednią kolejnością (prevOrder z daily_points)
+  // Frazy do awansów/spadków
+  const upPhrases = [
+    (n, pos, diff) => `${n} wskoczył na ${pos}. miejsce jak do autobusu na czerwonym` + (diff >= 3 ? ` — skok o ${diff} pozycje, szacun!` : '.'),
+    (n, pos, diff) => `${n} przesunął się na ${pos}. pozycję` + (diff >= 2 ? ` (o ${diff} w górę!)` : '.'),
+    (n, pos, diff) => `${n} awansował na ${pos}. miejsce` + (diff >= 3 ? ` — to był sprint godny Bolta.` : ' cicho, po sąsiedzku.'),
+  ]
+  const downPhrases = [
+    (n, pos) => `${n} musi teraz patrzeć na cudze plecy z ${pos}. pozycji — co dla niego nowość`,
+    (n, pos) => `${n} spadł na ${pos}. miejsce i nerwowo zerka w lusterko`,
+    (n, pos) => `${n} potknął się i ląduje na ${pos}. pozycji`,
+  ]
+  const pick = (arr) => arr[Math.floor(new Date().getDate() * 7 + arr.length) % arr.length]
+
   if (prevOrder && prevOrder.length > 0) {
     const moves = sorted.map((r, newPos) => {
       const oldPos = prevOrder.indexOf(r.name)
       if (oldPos === -1) return null
-      const diff = oldPos - newPos // >0 = awans, <0 = spadek
+      const diff = oldPos - newPos
       if (diff === 0) return null
-      return { name: r.name, newPos: newPos + 1, diff }
+      return { name: r.name, newPos: newPos + 1, oldPos: oldPos + 1, diff }
     }).filter(Boolean)
 
     const ups = moves.filter(m => m.diff > 0).sort((a, b) => b.diff - a.diff)
     const downs = moves.filter(m => m.diff < 0).sort((a, b) => a.diff - b.diff)
 
-    if (ups.length > 0) {
-      body += ups.map(m => `${m.name} awansuje na ${m.newPos}. miejsce` + (m.diff >= 2 ? ` (skok o ${m.diff}!)` : '')).join(', ') + '. '
+    // Lider — specjalna wzmianka jeśli awansował
+    const leaderMove = moves.find(m => m.name === leader?.name && m.diff > 0)
+    if (leaderMove) {
+      body += pick(upPhrases)(leader.name, 1, leaderMove.diff) + ' '
     }
-    if (downs.length > 0) {
-      body += downs.map(m => `${m.name} spada na ${m.newPos}. pozycję`).join(', ') + '. '
+
+    // Były lider spadł — wzmianka
+    if (prevOrder[0] && prevOrder[0] !== leader?.name) {
+      const exLeader = sorted.find(r => r.name === prevOrder[0])
+      const exPos = exLeader ? sorted.indexOf(exLeader) + 1 : null
+      if (exPos && exPos > 1) {
+        body += `${prevOrder[0]}, do niedawna prowadzący, ${exPos === 2 ? 'musi się teraz zadowolić srebrem' : `spadł na ${exPos}. pozycję`}. `
+      }
     }
-    if (ups.length === 0 && downs.length === 0) {
-      body += 'Tabela bez zmian — rywalizacja zamiera przed kolejną kolejką. '
+
+    // Trzecie miejsce
+    if (third) {
+      const thirdMove = moves.find(m => m.name === third.name)
+      if (thirdMove && thirdMove.diff !== 0) {
+        body += `${third.name} ${thirdMove.diff > 0 ? 'trzyma się w trójce' : 'jeszcze łapie się na podium'}, ale nerwowo zerka w lusterko. `
+      }
+    }
+
+    // Ruchy na dole tabeli
+    const otherUps = ups.filter(m => m.name !== leader?.name && m.newPos > 3)
+    const otherDowns = downs.filter(m => m.name !== prevOrder[0] && m.newPos > 3)
+    if (otherDowns.length > 0 && otherUps.length > 0) {
+      const dNames = otherDowns.map(m => m.name).join(' i ')
+      const uNames = otherUps.map(m => m.name).join(' i ')
+      body += `Na dole tabeli ${dNames} potknął się, a ${uNames} cicho przesunął się do góry. `
+    } else if (otherUps.length > 0) {
+      body += otherUps.map(m => pick(upPhrases)(m.name, m.newPos, m.diff)).join(' ') + ' '
+    } else if (otherDowns.length > 0) {
+      body += otherDowns.map(m => pick(downPhrases)(m.name, m.newPos)).join(', ') + '. '
+    }
+
+    if (moves.length === 0) {
+      body += `Tabela bez zmian — ale to cisza przed burzą, jak mówią starzy typerzy. `
     }
   } else {
-    // Fallback: opis czołówki
-    body += sorted.slice(0, 4).map((r, i) => `${i + 1}. ${r.name} (${r.total_points} pkt)`).join(', ') + '. '
+    body += `Na czele ${leader?.name} z ${leader?.total_points} pkt` +
+      (second ? `, tuż za nim ${second.name} (${second.total_points})` : '') +
+      (third ? ` i ${third.name} (${third.total_points})` : '') + '. Reszta stawki nie śpi. '
   }
 
-  if (nextMatch) {
-    body += `Następny mecz: ${nextMatch.home_flag || ''} ${nextMatch.home_team} – ${nextMatch.away_team} ${nextMatch.away_flag || ''}`.trim() + '.'
+  // Najbliższe 2 mecze
+  if (upcomingMatches && upcomingMatches.length > 0) {
+    const matchStr = upcomingMatches.map(m =>
+      `${m.home_flag || ''} ${m.home_team} – ${m.away_team} ${m.away_flag || ''}`.trim()
+    ).join(' i ')
+    body += `Przed nami${upcomingMatches.length > 1 ? ' dwa starcia' : ' starcie'}: ${matchStr}. Zakłady przyjmujemy do gwizdka!`
   }
 
   // Numer wydania
   const kickoffs = (allPreds || []).map(p => new Date(p.matches?.kickoff_at).getTime()).filter(Boolean)
   const first = kickoffs.length ? Math.min(...kickoffs) : Date.now()
   const nr = Math.max(1, Math.floor((Date.now() - first) / 86400000) + 1)
-
   const stageLabel = currentStage ? (STAGE_PROGRESS[currentStage]?.label || '') : 'Faza grupowa'
 
   return { headline, subhead, body, nr, stageLabel }
 }
 
-export function KaringtonyExpress({ rows, stats, allPreds, nextMatch, currentStage, playerCount, prevOrder }) {
+export function KaringtonyExpress({ rows, stats, allPreds, nextMatch, upcomingMatches, currentStage, playerCount, prevOrder }) {
   const todayKey = new Date().toISOString().slice(0, 10)
   const [open, setOpen] = useState(() => {
     try { return localStorage.getItem('karingtony_express_seen') !== todayKey } catch { return true }
@@ -438,7 +489,7 @@ export function KaringtonyExpress({ rows, stats, allPreds, nextMatch, currentSta
 
   let ed, dateStr
   try {
-    ed = buildEdition({ rows, stats: stats || {}, allPreds: allPreds || [], nextMatch, currentStage, prevOrder: prevOrder || [] })
+    ed = buildEdition({ rows, stats: stats || {}, allPreds: allPreds || [], nextMatch, upcomingMatches: upcomingMatches || [], currentStage, prevOrder: prevOrder || [] })
     dateStr = format(new Date(), 'EEEE, d MMMM yyyy', { locale: pl })
   } catch (e) {
     console.error('KaringtonyExpress:', e)
