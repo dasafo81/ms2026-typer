@@ -80,6 +80,11 @@ export default function AdminPage() {
     await loadMatches()
   }
 
+  async function toggleManual(matchId, current) {
+    await supabase.from('matches').update({ manual_result: !current }).eq('id', matchId)
+    await loadMatches()
+  }
+
   if (!authed) {
     return (
       <div style={{ maxWidth: 360, margin: '60px auto' }}>
@@ -196,6 +201,17 @@ export default function AdminPage() {
               <span className={`badge ${m.status === 'finished' ? 'badge-gray' : m.status === 'live' ? 'badge-red' : 'badge-blue'}`}>
                 {m.status}
               </span>
+              <button
+                onClick={() => toggleManual(m.id, m.manual_result)}
+                title={m.manual_result ? 'Wynik chroniony przed sync — kliknij by odblokować' : 'Wynik może być nadpisany przez sync — kliknij by zablokować'}
+                style={{
+                  fontSize: 15, padding: '2px 6px', borderRadius: 6, cursor: 'pointer',
+                  border: `1px solid ${m.manual_result ? 'var(--green)' : 'var(--border2)'}`,
+                  background: m.manual_result ? 'var(--green-dim)' : 'transparent',
+                  lineHeight: 1
+                }}>
+                {m.manual_result ? '🔒' : '🔓'}
+              </button>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <input
                   style={{ width: 40, textAlign: 'center', background: 'var(--bg3)', border: '1px solid var(--border2)', borderRadius: 6, padding: '4px', color: 'var(--text)', fontSize: 14 }}
