@@ -44,18 +44,60 @@ function mapMatch(match) {
     else if (match.score?.winner === 'AWAY_TEAM') winner = match.awayTeam?.name || null
   }
 
+  // ===== Wyniki: 90' jako główny score (na nim liczą się punkty),
+  // dogrywka i karne osobno =====
+  const s = match.score || {}
+  const duration = s.duration || 'REGULAR' // REGULAR / EXTRA_TIME / PENALTY_SHOOTOUT
+  const reg = s.regularTime
+  const ext = s.extraTime
+  const pen = s.penalties
+  const ft = s.fullTime
+
+  // Wynik po 90 minutach
+  let homeScore, awayScore
+  if (reg && (reg.home !== null || reg.away !== null)) {
+    homeScore = reg.home; awayScore = reg.away
+  } else if (duration === 'REGULAR') {
+    homeScore = ft?.home ?? null; awayScore = ft?.away ?? null
+  } else {
+    // Mecz z dogrywką/karnymi, a API nie dało regularTime — nie zgadujemy,
+    // zostawiamy null (admin uzupełni), żeby nie wpisać wyniku po karnych jako 90'
+    homeScore = null; awayScore = null
+  }
+
+  // Wynik po dogrywce (suma 90' + gole w dogrywce)
+  let etHome = null, etAway = null
+  if (duration !== 'REGULAR') {
+    if (reg && ext && ext.home !== null) {
+      etHome = (reg.home ?? 0) + (ext.home ?? 0)
+      etAway = (reg.away ?? 0) + (ext.away ?? 0)
+    } else if (duration === 'EXTRA_TIME' && ft) {
+      etHome = ft.home; etAway = ft.away
+    }
+  }
+
+  // Karne
+  const penHome = duration === 'PENALTY_SHOOTOUT' ? (pen?.home ?? null) : null
+  const penAway = duration === 'PENALTY_SHOOTOUT' ? (pen?.away ?? null) : null
+
   return {
     api_match_id: match.id,
     home_team: match.homeTeam?.name || 'TBD',
     away_team: match.awayTeam?.name || 'TBD',
-    home_score: match.score?.fullTime?.home ?? null,
-    away_score: match.score?.fullTime?.away ?? null,
+    home_score: homeScore,
+    away_score: awayScore,
+    score_et_home: etHome,
+    score_et_away: etAway,
+    score_pen_home: penHome,
+    score_pen_away: penAway,
     kickoff_at: match.utcDate,
     stage,
     group_name: groupLabel,
     status,
     venue: match.venue || null,
-    winner
+    winner,
+    went_to_penalties: duration === 'PENALTY_SHOOTOUT',
+    extra_time: duration !== 'REGULAR'
   }
 }
 
