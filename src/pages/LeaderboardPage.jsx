@@ -190,7 +190,19 @@ export default function LeaderboardPage() {
     const finishedPerPlayer = {}
     for (const p of preds) { const name = p.players.name; finishedPerPlayer[name] = (finishedPerPlayer[name] || 0) + 1 }
     const totalFinishedMatches = new Set(preds.map(p => p.match_id)).size
-    const sniperData = allRows.filter(r => (finishedPerPlayer[r.name] || 0) === totalFinishedMatches && totalFinishedMatches >= 3).map(r => ({ name: r.name, pct: Math.round((Number(r.exact_hits) / finishedPerPlayer[r.name]) * 100) })).sort((a, b) => b.pct - a.pct)
+    // Snajper: najwyższy % dokładnych wyników. Próg min. 10 rozegranych typów,
+    // żeby ktoś z 1 trafionym typem nie wygrał na 100%. Liczy % z faktycznie
+    // rozegranych typów gracza, nie wymaga typowania wszystkich meczów.
+    const sniperData = allRows
+      .filter(r => (finishedPerPlayer[r.name] || 0) >= 10)
+      .map(r => ({
+        name: r.name,
+        pct: Math.round((Number(r.exact_hits) / finishedPerPlayer[r.name]) * 100),
+        hits: Number(r.exact_hits),
+        played: finishedPerPlayer[r.name]
+      }))
+      // Sortuj po %, remis rozstrzyga liczba trafień
+      .sort((a, b) => (b.pct - a.pct) || (b.hits - a.hits))
     const sniper = sniperData[0]?.pct > 0 ? sniperData[0] : null
     const streaks = {}
     for (const row of allRows) {
