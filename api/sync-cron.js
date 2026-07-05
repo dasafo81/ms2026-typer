@@ -112,18 +112,42 @@ export default async function handler(req, res) {
 
   try {
     const matches = await fetchMatches()
+
+    // Mecze z ręczną korektą wyniku — sync NIE dotyka ich pól wynikowych
+    const { data: manualRows } = await supabase
+      .from('matches')
+      .select('api_match_id')
+      .eq('manual_result', true)
+    const manualIds = new Set((manualRows || []).map(m => m.api_match_id))
+
     let updated = 0
     const finishedIds = []
 
     for (const match of matches) {
       const mapped = mapMatch(match)
+
+      // Ręcznie skorygowany mecz: usuwamy z payloadu wszystkie pola wynikowe
+      if (manualIds.has(match.id)) {
+        delete mapped.home_score
+        delete mapped.away_score
+        delete mapped.score_et_home
+        delete mapped.score_et_away
+        delete mapped.score_pen_home
+        delete mapped.score_pen_away
+        delete mapped.winner
+        delete mapped.went_to_penalties
+        delete mapped.extra_time
+        delete mapped.status
+      }
+
       const { error } = await supabase
         .from('matches')
         .upsert(mapped, { onConflict: 'api_match_id' })
 
       if (!error) {
         updated++
-        if (mapped.status === 'finished') finishedIds.push(mapped.api_match_id)
+        // Punkty przeliczamy tylko meczom bez ręcznej korekty
+        if (mapped.status === 'finished' && !manualIds.has(match.id)) finishedIds.push(mapped.api_match_id)
       }
     }
 

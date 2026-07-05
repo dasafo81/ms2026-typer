@@ -75,7 +75,7 @@ export default function AdminPage() {
   }
 
   async function updateScore(matchId, field, value) {
-    await supabase.from('matches').update({ [field]: parseInt(value) || 0, status: 'finished' }).eq('id', matchId)
+    await supabase.from('matches').update({ [field]: parseInt(value) || 0, status: 'finished', manual_result: true }).eq('id', matchId)
     await supabase.rpc('calculate_points', { p_match_id: matchId })
     await loadMatches()
   }
