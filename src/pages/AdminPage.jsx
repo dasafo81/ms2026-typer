@@ -206,8 +206,8 @@ export default function AdminPage() {
                 title={m.manual_result ? 'Wynik chroniony przed sync — kliknij by odblokować' : 'Wynik może być nadpisany przez sync — kliknij by zablokować'}
                 style={{
                   fontSize: 15, padding: '2px 6px', borderRadius: 6, cursor: 'pointer',
-                  border: `1px solid ${m.manual_result ? 'var(--green)' : 'var(--border2)'}`,
-                  background: m.manual_result ? 'var(--green-dim)' : 'transparent',
+                  border: `1.5px solid ${m.manual_result ? '#c0392b' : 'var(--border2)'}`,
+                  background: m.manual_result ? '#c0392b1a' : 'transparent',
                   lineHeight: 1
                 }}>
                 {m.manual_result ? '🔒' : '🔓'}
