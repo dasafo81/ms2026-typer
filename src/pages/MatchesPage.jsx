@@ -233,11 +233,19 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
             {flagFor(match.home_team, match.home_flag)} {match.home_team}
           </span>
           {isFinished || isLive ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: theme.bg3, borderRadius: 8, padding: '6px 14px' }}>
-              <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'Space Grotesk', color: theme.text }}>{match.home_score ?? '–'}</span>
-              <span style={{ color: theme.text3, fontSize: 14 }}>:</span>
-              <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'Space Grotesk', color: theme.text }}>{match.away_score ?? '–'}</span>
-              {match.penalty && <span style={{ fontSize: 10, color: '#e24b4a', marginLeft: 4 }}>k</span>}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: theme.bg3, borderRadius: 8, padding: '6px 14px' }}>
+                <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'Space Grotesk', color: theme.text }}>{match.home_score ?? '–'}</span>
+                <span style={{ color: theme.text3, fontSize: 14 }}>:</span>
+                <span style={{ fontSize: 22, fontWeight: 800, fontFamily: 'Space Grotesk', color: theme.text }}>{match.away_score ?? '–'}</span>
+              </div>
+              {(match.score_et_home !== null && match.score_et_home !== undefined || match.went_to_penalties) && (
+                <div style={{ fontSize: 10, color: theme.text3, whiteSpace: 'nowrap' }}>
+                  {match.score_et_home !== null && match.score_et_home !== undefined && `d. ${match.score_et_home}:${match.score_et_away}`}
+                  {match.score_pen_home !== null && match.score_pen_home !== undefined && ` · k. ${match.score_pen_home}:${match.score_pen_away}`}
+                  {match.went_to_penalties && (match.score_pen_home === null || match.score_pen_home === undefined) && ' · po karnych'}
+                </div>
+              )}
             </div>
           ) : (
             <div style={{ color: theme.text3, fontSize: 20, fontWeight: 700 }}>vs</div>
