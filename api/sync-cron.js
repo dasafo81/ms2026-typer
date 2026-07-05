@@ -54,15 +54,15 @@ function mapMatch(match) {
   const ft = s.fullTime
 
   // Wynik po 90 minutach
-  let homeScore, awayScore
+  let homeScore, awayScore, scoreKnown = true
   if (reg && (reg.home !== null || reg.away !== null)) {
     homeScore = reg.home; awayScore = reg.away
   } else if (duration === 'REGULAR') {
     homeScore = ft?.home ?? null; awayScore = ft?.away ?? null
   } else {
-    // Mecz z dogrywką/karnymi, a API nie dało regularTime — nie zgadujemy,
-    // zostawiamy null (admin uzupełni), żeby nie wpisać wyniku po karnych jako 90'
-    homeScore = null; awayScore = null
+    // Mecz z dogrywką/karnymi bez regularTime z API — NIE nadpisujemy
+    // wyniku w bazie (pomijamy pola), admin ma kontrolę nad tym wynikiem
+    scoreKnown = false
   }
 
   // Wynik po dogrywce (suma 90' + gole w dogrywce)
@@ -80,16 +80,10 @@ function mapMatch(match) {
   const penHome = duration === 'PENALTY_SHOOTOUT' ? (pen?.home ?? null) : null
   const penAway = duration === 'PENALTY_SHOOTOUT' ? (pen?.away ?? null) : null
 
-  return {
+  const payload = {
     api_match_id: match.id,
     home_team: match.homeTeam?.name || 'TBD',
     away_team: match.awayTeam?.name || 'TBD',
-    home_score: homeScore,
-    away_score: awayScore,
-    score_et_home: etHome,
-    score_et_away: etAway,
-    score_pen_home: penHome,
-    score_pen_away: penAway,
     kickoff_at: match.utcDate,
     stage,
     group_name: groupLabel,
@@ -99,6 +93,14 @@ function mapMatch(match) {
     went_to_penalties: duration === 'PENALTY_SHOOTOUT',
     extra_time: duration !== 'REGULAR'
   }
+  // Pola wyniku tylko gdy znamy wynik 90' — inaczej nie ruszamy istniejących wartości
+  if (scoreKnown) {
+    payload.home_score = homeScore
+    payload.away_score = awayScore
+  }
+  if (etHome !== null) { payload.score_et_home = etHome; payload.score_et_away = etAway }
+  if (penHome !== null) { payload.score_pen_home = penHome; payload.score_pen_away = penAway }
+  return payload
 }
 
 export default async function handler(req, res) {
