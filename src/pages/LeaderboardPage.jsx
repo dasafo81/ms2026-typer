@@ -249,7 +249,6 @@ export default function LeaderboardPage() {
 
   return (
     <div>
-      {!loading && <KaringtonyExpress rows={rows} stats={stats} allPreds={allPreds} nextMatch={nextMatch} upcomingMatches={upcomingMatches} currentStage={currentStage} playerCount={rows.length} prevOrder={prevOrder} />}
       {isKnockout && <KnockoutProgress currentStage={currentStage} theme={t} flags={knockoutFlags} nextMatch={nextMatch} />}
       {!loading && (currentStage === 'sf' || currentStage === 'final') && rows.length >= 3 &&
         <Podium rows={rows} theme={t} player={player} />}
