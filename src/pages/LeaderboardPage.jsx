@@ -251,6 +251,8 @@ export default function LeaderboardPage() {
     <div>
       {!loading && <KaringtonyExpress rows={rows} stats={stats} allPreds={allPreds} nextMatch={nextMatch} upcomingMatches={upcomingMatches} currentStage={currentStage} playerCount={rows.length} prevOrder={prevOrder} />}
       {isKnockout && <KnockoutProgress currentStage={currentStage} theme={t} flags={knockoutFlags} nextMatch={nextMatch} />}
+      {!loading && (currentStage === 'sf' || currentStage === 'final') && rows.length >= 3 &&
+        <Podium rows={rows} theme={t} player={player} />}
 
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 4, color: t.text }}>🏆 Tabela rankingowa</h1>
@@ -721,4 +723,128 @@ function Skeleton({ t }) {
 }
 function Empty({ t }) {
   return <div style={{ textAlign: 'center', padding: '60px 20px', color: t.text2 }}><div style={{ fontSize: 40, marginBottom: 12 }}>🏜️</div><div style={{ fontSize: 16, fontWeight: 600 }}>Ranking pusty</div></div>
+}
+
+// ===== PODIUM — hero na półfinały/finał =====
+function useConfetti(active) {
+  const ref = useState(() => ({ current: null }))[0]
+  useEffect(() => {
+    if (!active || !ref.current) return
+    const box = ref.current
+    box.innerHTML = ''
+    const colors = ['#e8c96a', '#0d7b6b', '#d85a30', '#4a7ab8', '#c9884c']
+    const anims = []
+    for (let i = 0; i < 26; i++) {
+      const d = document.createElement('div')
+      const size = 4 + Math.random() * 5
+      d.style.cssText = `position:absolute;width:${size}px;height:${size}px;border-radius:${Math.random() > 0.5 ? '50%' : '1px'};background:${colors[i % colors.length]};left:${Math.random() * 100}%;top:-10px;opacity:${0.5 + Math.random() * 0.5};`
+      box.appendChild(d)
+      const fall = 6000 + Math.random() * 7000
+      const sway = 20 + Math.random() * 40
+      const anim = d.animate([
+        { transform: 'translateY(0) translateX(0) rotate(0deg)' },
+        { transform: `translateY(420px) translateX(${Math.random() > 0.5 ? sway : -sway}px) rotate(${180 + Math.random() * 360}deg)` }
+      ], { duration: fall, iterations: Infinity, delay: Math.random() * 5000, easing: 'linear' })
+      anims.push(anim)
+    }
+    return () => anims.forEach(a => a.cancel())
+  }, [active])
+  return ref
+}
+
+function Podium({ rows, theme: t, player }) {
+  const sorted = [...rows].sort((a, b) => Number(b.total_points) - Number(a.total_points))
+  const [first, second, third] = sorted
+  const confettiRef = useConfetti(true)
+
+  const myRow = player ? rows.find(r => r.id === player.id) : null
+  const myIdx = myRow ? sorted.findIndex(r => r.id === myRow.id) : -1
+  const onPodium = myIdx >= 0 && myIdx < 3
+  const gapToThird = myIdx >= 3 && third ? Number(third.total_points) - Number(myRow.total_points) : null
+
+  if (!first || !second || !third) return null
+
+  const avatarColor = (name) => {
+    const colors = ['#5b8fb0', '#7a6b8e', '#4a9e7d', '#c9884c', '#a05252', '#3d7a52', '#31708e']
+    let h = 0
+    for (const c of name) h = (h * 31 + c.charCodeAt(0)) % colors.length
+    return colors[h]
+  }
+
+  return (
+    <div style={{
+      marginBottom: 20, position: 'relative', overflow: 'hidden',
+      background: `linear-gradient(180deg, ${t.bg2} 0%, ${t.bg} 60%)`,
+      border: `1px solid ${t.border2}`, borderRadius: 16, padding: '20px 20px 0'
+    }}>
+      <div ref={el => { confettiRef.current = el }} style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '100%', pointerEvents: 'none', zIndex: 1 }} />
+
+      <div style={{ textAlign: 'center', marginBottom: 4, position: 'relative', zIndex: 2 }}>
+        <div style={{ fontSize: 11, letterSpacing: 3, color: t.accent, fontWeight: 700, textTransform: 'uppercase' }}>
+          Karingtony World Cup League 2026
+        </div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: t.text, marginTop: 4 }}>🏆 Podium</div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 12, position: 'relative', zIndex: 2, padding: '10px 20px 0' }}>
+        {/* 2nd */}
+        <div style={{ flex: 1, maxWidth: 170, textAlign: 'center' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: avatarColor(second.name), margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: '#fff', border: '3px solid #c0c4cc' }}>
+            {second.name[0]}
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{second.name}</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: t.text2, fontFamily: 'Space Grotesk, monospace', margin: '2px 0 8px' }}>{second.total_points}</div>
+          <div style={{ height: 70, background: 'linear-gradient(180deg,#d8dce2,#c0c4cc)', borderRadius: '10px 10px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26 }}>🥈</div>
+        </div>
+
+        {/* 1st */}
+        <div style={{ flex: 1, maxWidth: 190, textAlign: 'center' }}>
+          <div style={{ fontSize: 22, marginBottom: 2 }}>👑</div>
+          <div style={{ width: 68, height: 68, borderRadius: '50%', background: avatarColor(first.name), margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700, color: '#fff', border: `3px solid ${t.accent}`, boxShadow: `0 0 24px ${t.accent}88` }}>
+            {first.name[0]}
+          </div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: t.text }}>{first.name}</div>
+          <div style={{ fontSize: 26, fontWeight: 700, color: t.accent, fontFamily: 'Space Grotesk, monospace', margin: '2px 0 8px' }}>{first.total_points}</div>
+          <div style={{ height: 100, background: `linear-gradient(180deg, ${t.accent2}, ${t.accent})`, borderRadius: '10px 10px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, boxShadow: `0 -4px 20px ${t.accent}55` }}>🥇</div>
+        </div>
+
+        {/* 3rd */}
+        <div style={{ flex: 1, maxWidth: 170, textAlign: 'center' }}>
+          <div style={{ width: 56, height: 56, borderRadius: '50%', background: avatarColor(third.name), margin: '0 auto 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: '#fff', border: '3px solid #cd9a6b' }}>
+            {third.name[0]}
+          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{third.name}</div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: t.text2, fontFamily: 'Space Grotesk, monospace', margin: '2px 0 8px' }}>{third.total_points}</div>
+          <div style={{ height: 50, background: 'linear-gradient(180deg,#e0b088,#cd9a6b)', borderRadius: '10px 10px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🥉</div>
+        </div>
+      </div>
+
+      {/* Pasek gonienia — tylko jeśli gracz jest zalogowany i poza podium */}
+      {myRow && !onPodium && (
+        <div style={{
+          background: t.bg2, borderTop: `2px solid ${t.accent}`, margin: '0 -20px', padding: '12px 24px',
+          display: 'flex', alignItems: 'center', gap: 12, position: 'relative', zIndex: 2
+        }}>
+          <div style={{ width: 36, height: 36, borderRadius: '50%', background: avatarColor(myRow.name), display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+            {myRow.name[0]}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: t.accent }}>
+              {myRow.name} <span style={{ fontWeight: 400, color: t.text3 }}>(ty) · {myIdx + 1}. miejsce</span>
+            </div>
+            <div style={{ fontSize: 11, color: t.text3 }}>
+              {gapToThird > 0
+                ? <>Do podium brakuje Ci <strong style={{ color: t.accent }}>{gapToThird} pkt</strong> — jeszcze można dogonić!</>
+                : gapToThird === 0
+                  ? <>Remis punktowy z podium — o kolejności decyduje celność!</>
+                  : <>Trzymaj formę do samego końca!</>
+              }
+            </div>
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 700, fontFamily: 'Space Grotesk, monospace', color: t.accent }}>{myRow.total_points}</div>
+        </div>
+      )}
+      {(!myRow || onPodium) && <div style={{ height: 20 }} />}
+    </div>
+  )
 }
