@@ -168,6 +168,7 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
   const [winner, setWinner] = useState(prediction?.pred_winner ?? '')
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState(false)
 
   const isDrawScore = home !== '' && away !== '' && parseInt(home) === parseInt(away)
   const showKnockoutOptions = isKnockout && isOpen
@@ -185,6 +186,7 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
   async function savePrediction() {
     if (!playerId || home === '' || away === '') return
     setSaving(true)
+    setSaveError(false)
     const payload = {
       player_id: playerId,
       match_id: match.id,
@@ -200,8 +202,14 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
       payload.pred_penalty = isDrawScore ? penalty : false
       payload.pred_winner = winner || null
     }
-    await supabase.from('predictions').upsert(payload, { onConflict: 'player_id,match_id' })
+    const { error } = await supabase.from('predictions').upsert(payload, { onConflict: 'player_id,match_id' })
     setSaving(false)
+    if (error) {
+      console.error('Błąd zapisu typu:', error)
+      setSaveError(true)
+      setTimeout(() => setSaveError(false), 5000)
+      return
+    }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
     onSaved()
@@ -268,12 +276,12 @@ function MatchCard({ match, prediction, playerId, onSaved, theme, knockout, now 
               <button onClick={savePrediction} disabled={saving || home === '' || away === ''}
                 style={{
                   padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                  background: saved ? `${theme.accent}22` : theme.accent,
-                  color: saved ? theme.accent : (knockout ? '#0f0e17' : '#000'),
-                  border: saved ? `1px solid ${theme.accent}` : 'none',
+                  background: saveError ? '#c0392b22' : saved ? `${theme.accent}22` : theme.accent,
+                  color: saveError ? '#c0392b' : saved ? theme.accent : (knockout ? '#0f0e17' : '#000'),
+                  border: saveError ? '1px solid #c0392b' : saved ? `1px solid ${theme.accent}` : 'none',
                   cursor: 'pointer', opacity: saving ? 0.6 : 1
                 }}>
-                {saved ? '✓' : saving ? '...' : 'Zapisz'}
+                {saveError ? '✗ Błąd — kliknij ponownie' : saved ? '✓' : saving ? '...' : 'Zapisz'}
               </button>
             </>
           ) : prediction ? (
